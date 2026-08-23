@@ -103,6 +103,7 @@ One title, one short system message, and three primary actions. No gameplay or p
 - Added short neon-yellow jagged projectile/chain rendering, a yellow E-THERAPY cooldown HUD, purple Epic level-up presentation, Testing-menu grant, and detailed runtime telemetry.
 - Verified the combined weapon behavior in the browser: both the primary normal bullet and its 500 ms Double Shot follow-up captured a two-enemy penetration limit; Electro Therapy fired two independent bolts with Double Shot, dealt 2 damage, chained to a second target within 180 px, inherited Cycling Rate (4,545.45 ms at rank 1), and explicitly ignored Penetrating Shot. Inspected the Epic card, Testing panel, live yellow arc, and standard playfield screenshots. All ten browser regression scripts, the required gameplay client, production build, and canonical verifier passed with zero captured browser errors. The existing Phaser bundle-size warning remains non-blocking.
 - Prepared the first public GitHub Pages release: added a repository-aware Vite base path, converted all audio tags to base-aware URLs, added a locked-dependency Pages build/deploy workflow, and documented the Google Lyria soundtrack provenance.
+- Published the verified baseline to the public `Angry-TacoZ/test-subject-01` repository and enabled GitHub Pages at `https://angry-tacoz.github.io/test-subject-01/`. The live page, game entry flow, gameplay state, and both music asset responses were verified; updated the workflow actions to Node 24-compatible releases after GitHub identified Node 20 deprecation annotations.
 
 ## Next
 
