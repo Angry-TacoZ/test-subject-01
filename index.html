@@ -86,9 +86,9 @@
 
       <dialog id="game-over-dialog" class="game-over-dialog" aria-labelledby="game-over-title">
         <div class="dialog-frame game-over-frame">
-          <p class="eyebrow">SUBJECT VITALS // ZERO</p>
+          <p id="run-end-eyebrow" class="eyebrow">SUBJECT VITALS // ZERO</p>
           <h2 id="game-over-title">Game Over</h2>
-          <p class="game-over-copy">Test subject terminated.</p>
+          <p id="run-end-copy" class="game-over-copy">Test subject terminated.</p>
 
           <div class="game-over-actions" aria-label="Game over actions">
             <button id="try-again-button" type="button">Try Again</button>
@@ -116,6 +116,7 @@
           <span class="level-status">
             <strong>LEVEL 01</strong>
             <b id="hit-counter">HITS 00</b>
+            <b id="survival-timer">03:00</b>
           </span>
           <dl class="stats-graphic" aria-label="Player statistics">
             <div><dt>LVL</dt><dd id="stat-level">1</dd></div>
@@ -125,6 +126,8 @@
             <div><dt>MAGNET</dt><dd id="stat-magnetism">10.00px</dd></div>
             <div><dt>VOLLEY</dt><dd id="stat-volley">1x</dd></div>
             <div><dt>PEN</dt><dd id="stat-penetration">1x</dd></div>
+            <div><dt>REGEN</dt><dd id="stat-regen">LOCKED</dd></div>
+            <div><dt>WEAPON</dt><dd id="stat-weapon">SINGLE</dd></div>
           </dl>
         </div>
 

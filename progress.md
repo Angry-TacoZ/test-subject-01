@@ -105,6 +105,8 @@ One title, one short system message, and three primary actions. No gameplay or p
 - Prepared the first public GitHub Pages release: added a repository-aware Vite base path, converted all audio tags to base-aware URLs, added a locked-dependency Pages build/deploy workflow, and documented the Google Lyria soundtrack provenance.
 - Published the verified baseline to the public `Angry-TacoZ/test-subject-01` repository and enabled GitHub Pages at `https://angry-tacoz.github.io/test-subject-01/`. The live page, game entry flow, gameplay state, and both music asset responses were verified; updated the workflow actions to Node 24-compatible releases after GitHub identified Node 20 deprecation annotations.
 - Extended CI to verify pull requests while restricting Pages deployment to `main`. Protected `main` with the `build` check, conversation resolution, and force-push/deletion prevention; no GitHub-native approval count is required so James can continue using documented external AI reviews.
+- On `codex/survival-progression`, added Rare Nanite Rehab (1 HP per 2 active seconds), Epic Shotgun (3 pellets at -12/0/+12 degrees, 420 px range, compatible with reload/Double Shot/Penetrating Shot), and a 3:00 active-game victory timer with a You Survived result using Try Again/Main Menu.
+- Verified regeneration and survival clocks freeze in Options, exact two-second healing, exact range-clamped shotgun endpoints, full three-pellet Double Shot/Penetrating compatibility, all nine natural level-up paths, desktop/mobile presentation, keyboard/touch/Xbox victory controls, the complete browser regression suite, secret scan, production build, and canonical verifier with no captured browser errors.
 
 ## Next
 

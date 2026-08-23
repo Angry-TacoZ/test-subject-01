@@ -10,6 +10,12 @@ const PROJECTILE_SPEED = 650;
 const PROJECTILE_RADIUS = 4;
 const PROJECTILE_DAMAGE = 1;
 const DOUBLE_SHOT_DELAY_MS = 500;
+const NANITE_REHAB_HEALING = 1;
+const NANITE_REHAB_INTERVAL_MS = 2000;
+const SHOTGUN_PELLET_COUNT = 3;
+const SHOTGUN_SPREAD_DEGREES = 12;
+const SHOTGUN_RANGE = 420;
+const SURVIVAL_DURATION_MS = 3 * 60 * 1000;
 const ELECTRO_THERAPY_DAMAGE = 2;
 const ELECTRO_THERAPY_BASE_COOLDOWN_MS = 5000;
 const ELECTRO_THERAPY_CHAIN_RANGE = 180;
@@ -84,12 +90,28 @@ const UPGRADE_DEFINITIONS = [
     effect: "Each projectile passes through its first enemy and despawns on the second hit.",
   },
   {
+    id: "naniteRehab",
+    rarity: "rare",
+    oneTime: true,
+    code: "NANITE REHAB",
+    name: "Nanite Rehab",
+    effect: "Regenerate 1 HP every 2 seconds while below maximum health.",
+  },
+  {
     id: "electroTherapy",
     rarity: "epic",
     oneTime: true,
     code: "ELECTRO THERAPY",
     name: "Electro Therapy",
     effect: "Launch a 2-damage electric bolt that chains to a second target every 5 seconds.",
+  },
+  {
+    id: "shotgun",
+    rarity: "epic",
+    oneTime: true,
+    code: "SCATTER PROTOCOL",
+    name: "Shotgun",
+    effect: "Replace the standard weapon with 3 spread pellets limited to 420 px range.",
   },
 ];
 
@@ -211,6 +233,9 @@ class TitleScene extends Phaser.Scene {
     this.electroChainHits = 0;
     this.projectilePenetrations = 0;
     this.completedPenetrations = 0;
+    this.naniteRegenAccumulatorMs = 0;
+    this.naniteHealingApplied = 0;
+    this.survivalElapsedMs = 0;
     this.nextProjectileId = 1;
     this.weaponReloadMs = 0;
     this.aimActive = false;
@@ -225,7 +250,7 @@ class TitleScene extends Phaser.Scene {
     this.totalPlayerXp = 0;
     this.playerLevel = 1;
     this.xpRequired = INITIAL_LEVEL_XP_REQUIRED;
-    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, doubleShot: 0, penetratingShot: 0, electroTherapy: 0 };
+    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, doubleShot: 0, penetratingShot: 0, naniteRehab: 0, electroTherapy: 0, shotgun: 0 };
     this.pendingUpgradeChoices = [];
     this.nextEnemyId = 1;
     this.spawnElapsedMs = 0;
@@ -234,6 +259,7 @@ class TitleScene extends Phaser.Scene {
     this.spawnPointIndex = 0;
     this.enemiesSpawnedBySystem = 0;
     this.hitCounterElement = document.querySelector("#hit-counter");
+    this.survivalTimerElement = document.querySelector("#survival-timer");
     this.healthBarElement = document.querySelector("#player-health");
     this.healthFillElement = document.querySelector("#player-health-fill");
     this.healthOutputElement = document.querySelector("#player-health-output");
@@ -254,6 +280,8 @@ class TitleScene extends Phaser.Scene {
     this.statMagnetismElement = document.querySelector("#stat-magnetism");
     this.statVolleyElement = document.querySelector("#stat-volley");
     this.statPenetrationElement = document.querySelector("#stat-penetration");
+    this.statRegenElement = document.querySelector("#stat-regen");
+    this.statWeaponElement = document.querySelector("#stat-weapon");
     this.gridOffset = 0;
     this.streakClock = 180;
     this.streaks = [];
@@ -426,7 +454,7 @@ class TitleScene extends Phaser.Scene {
 
       if (justPressed(0)) activateControllerControl();
       if (justPressed(1) && state.mode === "options") optionsDialog.close();
-      if (justPressed(1) && state.mode === "gameover") {
+      if (justPressed(1) && ["gameover", "survived"].includes(state.mode)) {
         document.querySelector("#main-menu-button").click();
       }
       if (justPressed(9) && state.mode === "menu") {
@@ -472,6 +500,9 @@ class TitleScene extends Phaser.Scene {
     this.electroChainHits = 0;
     this.projectilePenetrations = 0;
     this.completedPenetrations = 0;
+    this.naniteRegenAccumulatorMs = 0;
+    this.naniteHealingApplied = 0;
+    this.survivalElapsedMs = 0;
     this.nextProjectileId = 1;
     this.weaponReloadMs = 0;
     this.aimActive = false;
@@ -486,7 +517,7 @@ class TitleScene extends Phaser.Scene {
     this.totalPlayerXp = 0;
     this.playerLevel = 1;
     this.xpRequired = INITIAL_LEVEL_XP_REQUIRED;
-    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, doubleShot: 0, penetratingShot: 0, electroTherapy: 0 };
+    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, doubleShot: 0, penetratingShot: 0, naniteRehab: 0, electroTherapy: 0, shotgun: 0 };
     this.pendingUpgradeChoices = [];
     this.nextEnemyId = 1;
     this.spawnElapsedMs = 0;
@@ -495,6 +526,7 @@ class TitleScene extends Phaser.Scene {
     this.spawnPointIndex = 0;
     this.enemiesSpawnedBySystem = 0;
     this.updateHitCounter();
+    this.updateSurvivalTimerHud();
     const arena = this.getArenaBounds();
     const point = (x, y) => ({
       x: arena.x + arena.width * x,
@@ -604,6 +636,9 @@ class TitleScene extends Phaser.Scene {
     this.electroChainHits = 0;
     this.projectilePenetrations = 0;
     this.completedPenetrations = 0;
+    this.naniteRegenAccumulatorMs = 0;
+    this.naniteHealingApplied = 0;
+    this.survivalElapsedMs = 0;
     this.weaponReloadMs = 0;
     this.aimActive = false;
     this.aimSource = null;
@@ -613,7 +648,7 @@ class TitleScene extends Phaser.Scene {
     this.totalPlayerXp = 0;
     this.playerLevel = 1;
     this.xpRequired = INITIAL_LEVEL_XP_REQUIRED;
-    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, doubleShot: 0, penetratingShot: 0, electroTherapy: 0 };
+    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, doubleShot: 0, penetratingShot: 0, naniteRehab: 0, electroTherapy: 0, shotgun: 0 };
     this.pendingUpgradeChoices = [];
     this.spawnElapsedMs = 0;
     this.spawnAccumulator = 0;
@@ -627,6 +662,7 @@ class TitleScene extends Phaser.Scene {
     this.impactFlashMs = Math.max(0, this.impactFlashMs - deltaMs);
     this.weaponReloadMs = Math.max(0, this.weaponReloadMs - deltaMs);
     this.electroCooldownMs = Math.max(0, this.electroCooldownMs - deltaMs);
+    this.updateNaniteRehab(deltaMs);
     for (const arc of this.electroArcs) arc.lifeMs -= deltaMs;
     this.electroArcs = this.electroArcs.filter((arc) => arc.lifeMs > 0);
     this.updatePendingWeaponShots(deltaMs);
@@ -717,6 +753,42 @@ class TitleScene extends Phaser.Scene {
     this.updateProjectiles(deltaSeconds, deltaMs);
     this.updateElectroProjectiles(deltaSeconds);
     this.updateXpDrops(deltaMs);
+    if (state.mode === "level" && player.health > 0) this.updateSurvivalTimer(deltaMs);
+  }
+
+  updateNaniteRehab(deltaMs) {
+    if (this.upgradeRanks.naniteRehab === 0) return;
+    const player = this.entities[0];
+    if (!player) return;
+    this.naniteRegenAccumulatorMs += deltaMs;
+    while (this.naniteRegenAccumulatorMs >= NANITE_REHAB_INTERVAL_MS) {
+      this.naniteRegenAccumulatorMs -= NANITE_REHAB_INTERVAL_MS;
+      if (player.health >= player.maxHealth) continue;
+      const previousHealth = player.health;
+      player.health = Math.min(player.maxHealth, player.health + NANITE_REHAB_HEALING);
+      this.naniteHealingApplied += player.health - previousHealth;
+      this.updateHealthHud();
+    }
+  }
+
+  updateSurvivalTimer(deltaMs) {
+    this.survivalElapsedMs = Math.min(
+      SURVIVAL_DURATION_MS,
+      this.survivalElapsedMs + deltaMs,
+    );
+    this.updateSurvivalTimerHud();
+    if (this.survivalElapsedMs >= SURVIVAL_DURATION_MS) showRunEnd("survived");
+  }
+
+  updateSurvivalTimerHud() {
+    if (!this.survivalTimerElement) return;
+    const remainingSeconds = Math.max(
+      0,
+      Math.ceil((SURVIVAL_DURATION_MS - this.survivalElapsedMs) / 1000),
+    );
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    this.survivalTimerElement.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   }
 
   setAimToward(x, y, source) {
@@ -750,12 +822,14 @@ class TitleScene extends Phaser.Scene {
     }
     const direction = { ...this.aimDirection };
     const hitLimit = this.getProjectileHitLimit();
-    this.spawnProjectile(direction, hitLimit);
+    const weaponMode = this.getStandardWeaponMode();
+    this.spawnWeaponVolley(direction, hitLimit, weaponMode);
     if (this.upgradeRanks.doubleShot > 0) {
       this.pendingWeaponShots.push({
         remainingMs: DOUBLE_SHOT_DELAY_MS,
         direction,
         hitLimit,
+        weaponMode,
       });
     }
     this.weaponReloadMs = this.getReloadDurationMs();
@@ -763,7 +837,38 @@ class TitleScene extends Phaser.Scene {
     return true;
   }
 
-  spawnProjectile(direction, hitLimit = this.getProjectileHitLimit()) {
+  getStandardWeaponMode() {
+    return this.upgradeRanks.shotgun > 0 ? "shotgun" : "single";
+  }
+
+  getWeaponVolleySize() {
+    return this.getStandardWeaponMode() === "shotgun" ? SHOTGUN_PELLET_COUNT : 1;
+  }
+
+  spawnWeaponVolley(direction, hitLimit, weaponMode = this.getStandardWeaponMode()) {
+    const spreadAngles = weaponMode === "shotgun"
+      ? [-SHOTGUN_SPREAD_DEGREES, 0, SHOTGUN_SPREAD_DEGREES]
+      : [0];
+    const maxRange = weaponMode === "shotgun" ? SHOTGUN_RANGE : null;
+    spreadAngles.forEach((degrees, index) => {
+      const radians = Phaser.Math.DegToRad(degrees);
+      const pelletDirection = {
+        x: direction.x * Math.cos(radians) - direction.y * Math.sin(radians),
+        y: direction.x * Math.sin(radians) + direction.y * Math.cos(radians),
+      };
+      this.spawnProjectile(pelletDirection, hitLimit, {
+        maxRange,
+        playSound: index === 0,
+        weaponMode,
+      });
+    });
+  }
+
+  spawnProjectile(
+    direction,
+    hitLimit = this.getProjectileHitLimit(),
+    { maxRange = null, playSound = true, weaponMode = "single" } = {},
+  ) {
     const player = this.entities[0];
     if (!player) return false;
     const muzzleDistance = player.radius + PROJECTILE_RADIUS + 4;
@@ -777,13 +882,16 @@ class TitleScene extends Phaser.Scene {
       vy: direction.y * PROJECTILE_SPEED,
       radius: PROJECTILE_RADIUS,
       damage: PROJECTILE_DAMAGE,
+      weaponMode,
+      maxRange,
+      distanceTraveled: 0,
       hitLimit,
       hitCount: 0,
       hitEnemyIds: [],
     });
     this.nextProjectileId += 1;
     this.shotsFired += 1;
-    playWeaponShotSfx();
+    if (playSound) playWeaponShotSfx();
     return true;
   }
 
@@ -795,7 +903,11 @@ class TitleScene extends Phaser.Scene {
     }
     this.pendingWeaponShots = this.pendingWeaponShots.filter((shot) => shot.remainingMs > 0);
     for (const pendingShot of readyShots) {
-      this.spawnProjectile(pendingShot.direction, pendingShot.hitLimit);
+      this.spawnWeaponVolley(
+        pendingShot.direction,
+        pendingShot.hitLimit,
+        pendingShot.weaponMode,
+      );
     }
   }
 
@@ -920,8 +1032,21 @@ class TitleScene extends Phaser.Scene {
     for (const projectile of this.projectiles) {
       projectile.previousX = projectile.x;
       projectile.previousY = projectile.y;
-      projectile.x += projectile.vx * deltaSeconds;
-      projectile.y += projectile.vy * deltaSeconds;
+      const stepX = projectile.vx * deltaSeconds;
+      const stepY = projectile.vy * deltaSeconds;
+      const stepDistance = Math.hypot(stepX, stepY);
+      const remainingRange = projectile.maxRange === null
+        ? stepDistance
+        : Math.max(0, projectile.maxRange - projectile.distanceTraveled);
+      const rangeScale = stepDistance > 0
+        ? Math.min(1, remainingRange / stepDistance)
+        : 0;
+      projectile.x += stepX * rangeScale;
+      projectile.y += stepY * rangeScale;
+      projectile.distanceTraveled += Math.hypot(
+        projectile.x - projectile.previousX,
+        projectile.y - projectile.previousY,
+      );
 
       const hitEnemy = this.entities.slice(1).find((enemy) =>
         !projectile.hitEnemyIds.includes(enemy.id) &&
@@ -944,7 +1069,9 @@ class TitleScene extends Phaser.Scene {
         projectile.x + projectile.radius >= arena.x + arena.width ||
         projectile.y - projectile.radius <= arena.y ||
         projectile.y + projectile.radius >= arena.y + arena.height;
-      if (!touchesArenaEdge) survivingProjectiles.push(projectile);
+      const reachedRange = projectile.maxRange !== null &&
+        projectile.distanceTraveled >= projectile.maxRange - 0.001;
+      if (!touchesArenaEdge && !reachedRange) survivingProjectiles.push(projectile);
     }
     this.projectiles = survivingProjectiles;
   }
@@ -1092,10 +1219,17 @@ class TitleScene extends Phaser.Scene {
     } else if (upgradeId === "penetratingShot") {
       if (this.upgradeRanks.penetratingShot > 0) return false;
       this.upgradeRanks.penetratingShot = 1;
+    } else if (upgradeId === "naniteRehab") {
+      if (this.upgradeRanks.naniteRehab > 0) return false;
+      this.upgradeRanks.naniteRehab = 1;
+      this.naniteRegenAccumulatorMs = 0;
     } else if (upgradeId === "electroTherapy") {
       if (this.upgradeRanks.electroTherapy > 0) return false;
       this.upgradeRanks.electroTherapy = 1;
       this.electroCooldownMs = 0;
+    } else if (upgradeId === "shotgun") {
+      if (this.upgradeRanks.shotgun > 0) return false;
+      this.upgradeRanks.shotgun = 1;
     } else {
       return false;
     }
@@ -1191,8 +1325,11 @@ class TitleScene extends Phaser.Scene {
     this.statSpeedElement.textContent = this.getPlayerSpeed().toFixed(1).replace(".0", "");
     this.statReloadElement.textContent = `${(this.getReloadDurationMs() / 1000).toFixed(2)}s`;
     this.statMagnetismElement.textContent = `${this.getMagnetismDistance().toFixed(2)}px`;
-    this.statVolleyElement.textContent = this.upgradeRanks.doubleShot > 0 ? "2x" : "1x";
+    const volleyMultiplier = this.upgradeRanks.doubleShot > 0 ? 2 : 1;
+    this.statVolleyElement.textContent = `${this.getWeaponVolleySize() * volleyMultiplier}x`;
     this.statPenetrationElement.textContent = `${this.getProjectileHitLimit()}x`;
+    this.statRegenElement.textContent = this.upgradeRanks.naniteRehab > 0 ? "1 / 2s" : "LOCKED";
+    this.statWeaponElement.textContent = this.getStandardWeaponMode() === "shotgun" ? "SHOTGUN" : "SINGLE";
   }
 
   resolveArenaBoundary(entity) {
@@ -1871,15 +2008,32 @@ function showLevelUp() {
   requestAnimationFrame(focusFirstControllerControl);
 }
 
-function showGameOver() {
-  if (state.mode === "gameover") return;
-  state.mode = "gameover";
+function showRunEnd(outcome) {
+  if (["gameover", "survived"].includes(state.mode)) return;
+  const survived = outcome === "survived";
+  state.mode = survived ? "survived" : "gameover";
   state.musicPlayback = "paused";
   menuMusic.pause();
   levelMusic.pause();
-  gameShell.setAttribute("aria-label", "Test Subject 01 game over");
+  document.querySelector("#run-end-eyebrow").textContent = survived
+    ? "SURVIVAL THRESHOLD // COMPLETE"
+    : "SUBJECT VITALS // ZERO";
+  document.querySelector("#game-over-title").textContent = survived
+    ? "You Survived"
+    : "Game Over";
+  document.querySelector("#run-end-copy").textContent = survived
+    ? "Three-minute trial completed."
+    : "Test subject terminated.";
+  gameOverDialog.dataset.outcome = survived ? "survived" : "gameover";
+  gameShell.setAttribute("aria-label", survived
+    ? "Test Subject 01 survival complete"
+    : "Test Subject 01 game over");
   gameOverDialog.showModal();
   requestAnimationFrame(() => document.querySelector("#try-again-button").focus());
+}
+
+function showGameOver() {
+  showRunEnd("gameover");
 }
 
 document.querySelector("#start-button").addEventListener("click", () => {
@@ -1972,12 +2126,18 @@ window.render_game_to_text = () => {
     scene.levelActive
       ? {
           goal: "Avoid contact with the red pursuers",
-          paused: ["options", "levelup", "gameover"].includes(state.mode),
+          paused: ["options", "levelup", "gameover", "survived"].includes(state.mode),
           gameOver: state.mode === "gameover",
+          survived: state.mode === "survived",
           choosingUpgrade: state.mode === "levelup",
           hits: scene.hits,
           contactDamage: ENEMY_CONTACT_DAMAGE,
           impactFlashMs: roundCoordinate(scene.impactFlashMs),
+          survival: {
+            durationMs: SURVIVAL_DURATION_MS,
+            elapsedMs: roundCoordinate(scene.survivalElapsedMs),
+            remainingMs: roundCoordinate(Math.max(0, SURVIVAL_DURATION_MS - scene.survivalElapsedMs)),
+          },
           arena: scene.getArenaBounds(),
           player: scene.entities[0]
             ? {
@@ -1988,6 +2148,13 @@ window.render_game_to_text = () => {
                 health: scene.entities[0].health,
                 maxHealth: scene.entities[0].maxHealth,
                 movementSpeed: roundCoordinate(scene.getPlayerSpeed()),
+                naniteRehab: {
+                  unlocked: scene.upgradeRanks.naniteRehab > 0,
+                  healingPerTick: NANITE_REHAB_HEALING,
+                  intervalMs: NANITE_REHAB_INTERVAL_MS,
+                  accumulatorMs: roundCoordinate(scene.naniteRegenAccumulatorMs),
+                  totalHealingApplied: scene.naniteHealingApplied,
+                },
                 vx: roundCoordinate(scene.entities[0].vx),
                 vy: roundCoordinate(scene.entities[0].vy),
               }
@@ -2019,15 +2186,28 @@ window.render_game_to_text = () => {
             ready: scene.aimActive && scene.weaponReloadMs <= 0,
             projectileSpeed: PROJECTILE_SPEED,
             projectileRadius: PROJECTILE_RADIUS,
-            projectileEndCondition: "enemy-hit-or-arena-edge",
+            projectileEndCondition: scene.getStandardWeaponMode() === "shotgun"
+              ? "enemy-hit, 420px range, or arena-edge"
+              : "enemy-hit-or-arena-edge",
             projectileHitLimit: scene.getProjectileHitLimit(),
             projectilePenetrations: scene.projectilePenetrations,
             completedPenetrations: scene.completedPenetrations,
             doubleShotDelayMs: DOUBLE_SHOT_DELAY_MS,
-            volleySize: scene.upgradeRanks.doubleShot > 0 ? 2 : 1,
+            volleySize: scene.getWeaponVolleySize() * (scene.upgradeRanks.doubleShot > 0 ? 2 : 1),
+            standardWeapon: {
+              mode: scene.getStandardWeaponMode(),
+              shotgunUnlocked: scene.upgradeRanks.shotgun > 0,
+              pelletCount: scene.getWeaponVolleySize(),
+              spreadDegrees: scene.upgradeRanks.shotgun > 0 ? SHOTGUN_SPREAD_DEGREES : 0,
+              maxRange: scene.upgradeRanks.shotgun > 0 ? SHOTGUN_RANGE : null,
+              doubleShotApplied: scene.upgradeRanks.doubleShot > 0,
+              penetrationApplied: scene.upgradeRanks.penetratingShot > 0,
+              reloadApplied: true,
+            },
             pendingFollowUpShots: scene.pendingWeaponShots.map((pendingShot) => ({
               remainingMs: roundCoordinate(pendingShot.remainingMs),
               hitLimit: pendingShot.hitLimit,
+              weaponMode: pendingShot.weaponMode,
               direction: {
                 x: roundCoordinate(pendingShot.direction.x),
                 y: roundCoordinate(pendingShot.direction.y),
@@ -2043,6 +2223,9 @@ window.render_game_to_text = () => {
               vy: roundCoordinate(projectile.vy),
               hitCount: projectile.hitCount,
               hitLimit: projectile.hitLimit,
+              weaponMode: projectile.weaponMode,
+              maxRange: projectile.maxRange,
+              distanceTraveled: roundCoordinate(projectile.distanceTraveled),
               hitEnemyIds: projectile.hitEnemyIds,
             })),
             electroTherapy: {
@@ -2160,7 +2343,7 @@ window.render_game_to_text = () => {
           ]
         : state.mode === "terminated"
         ? ["Reconnect"]
-        : state.mode === "gameover"
+        : ["gameover", "survived"].includes(state.mode)
           ? ["Try Again", "Main Menu", "D-pad navigation", "A select", "B main menu"]
         : state.mode === "levelup"
           ? ["Choose one upgrade", "D-pad or left-stick navigation", "A select"]
@@ -2177,6 +2360,33 @@ window.advanceTime = (ms) => {
   const steps = Math.max(1, Math.round(ms / frameMs));
   for (let step = 0; step < steps; step += 1) scene.update(0, frameMs);
 };
+
+if (import.meta.env.DEV) {
+  window.__testSubject01 = {
+    setPlayerHealth(health) {
+      const scene = game.scene.getScene("title");
+      const player = scene.entities[0];
+      if (!scene.levelActive || !player) return false;
+      player.health = Phaser.Math.Clamp(health, 0, player.maxHealth);
+      scene.updateHealthHud();
+      return true;
+    },
+    setSurvivalElapsedMs(elapsedMs) {
+      const scene = game.scene.getScene("title");
+      if (!scene.levelActive) return false;
+      scene.survivalElapsedMs = Phaser.Math.Clamp(elapsedMs, 0, SURVIVAL_DURATION_MS);
+      scene.updateSurvivalTimerHud();
+      return true;
+    },
+    clearEnemies() {
+      const scene = game.scene.getScene("title");
+      if (!scene.levelActive) return false;
+      scene.entities = scene.entities.slice(0, 1);
+      scene.spawnAccumulator = 0;
+      return true;
+    },
+  };
+}
 
 window.addEventListener("keydown", async (event) => {
   if (event.key === "Escape" && state.mode === "level") {
