@@ -760,14 +760,21 @@ class TitleScene extends Phaser.Scene {
     if (this.upgradeRanks.naniteRehab === 0) return;
     const player = this.entities[0];
     if (!player) return;
+    if (player.health >= player.maxHealth) {
+      this.naniteRegenAccumulatorMs = 0;
+      return;
+    }
     this.naniteRegenAccumulatorMs += deltaMs;
     while (this.naniteRegenAccumulatorMs >= NANITE_REHAB_INTERVAL_MS) {
       this.naniteRegenAccumulatorMs -= NANITE_REHAB_INTERVAL_MS;
-      if (player.health >= player.maxHealth) continue;
       const previousHealth = player.health;
       player.health = Math.min(player.maxHealth, player.health + NANITE_REHAB_HEALING);
       this.naniteHealingApplied += player.health - previousHealth;
       this.updateHealthHud();
+      if (player.health >= player.maxHealth) {
+        this.naniteRegenAccumulatorMs = 0;
+        break;
+      }
     }
   }
 

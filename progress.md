@@ -107,6 +107,7 @@ One title, one short system message, and three primary actions. No gameplay or p
 - Extended CI to verify pull requests while restricting Pages deployment to `main`. Protected `main` with the `build` check, conversation resolution, and force-push/deletion prevention; no GitHub-native approval count is required so James can continue using documented external AI reviews.
 - On `codex/survival-progression`, added Rare Nanite Rehab (1 HP per 2 active seconds), Epic Shotgun (3 pellets at -12/0/+12 degrees, 420 px range, compatible with reload/Double Shot/Penetrating Shot), and a 3:00 active-game victory timer with a You Survived result using Try Again/Main Menu.
 - Verified regeneration and survival clocks freeze in Options, exact two-second healing, exact range-clamped shotgun endpoints, full three-pellet Double Shot/Penetrating compatibility, all nine natural level-up paths, desktop/mobile presentation, keyboard/touch/Xbox victory controls, the complete browser regression suite, secret scan, production build, and canonical verifier with no captured browser errors.
+- External AI review requested a Nanite Rehab timing correction. Reproduced the 1.984s-full-health carryover causing a heal 34ms after damage, then changed regeneration to accumulate only while injured and clear its remainder whenever the player is full.
 
 ## Next
 
