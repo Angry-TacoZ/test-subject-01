@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#02070b" />
+    <title>Test Subject 01</title>
+  </head>
+  <body>
+    <main id="game-shell" aria-label="Test Subject 01 title screen">
+      <div id="game-canvas" aria-hidden="true"></div>
+
+      <section class="menu" aria-labelledby="game-title">
+        <p class="eyebrow">SUBJECT INTERFACE // ONLINE</p>
+        <h1 id="game-title"><span>TEST SUBJECT</span><strong>01</strong></h1>
+        <p class="subtitle">Unauthorized cognition detected.</p>
+
+        <nav class="menu-actions" aria-label="Main menu">
+          <button id="start-button" type="button"><span>01</span> Start</button>
+          <button id="options-button" type="button"><span>02</span> Options</button>
+          <button id="exit-button" type="button"><span>03</span> Exit</button>
+        </nav>
+
+        <p id="system-status" class="system-status" role="status" aria-live="polite">
+          Awaiting input
+        </p>
+      </section>
+
+      <dialog id="options-dialog" aria-labelledby="options-title">
+        <div class="dialog-frame">
+          <p class="eyebrow">CONFIGURATION NODE</p>
+          <h2 id="options-title">Options</h2>
+
+          <section class="sound-panel" aria-labelledby="sound-title">
+            <div class="sound-heading">
+              <h3 id="sound-title">Sound</h3>
+            </div>
+
+            <div class="sound-control">
+              <div class="sound-control-heading">
+                <label for="music-volume">Music</label>
+                <output id="music-volume-output" for="music-volume">50%</output>
+              </div>
+              <input
+                id="music-volume"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value="50"
+                aria-describedby="music-volume-help"
+              />
+              <p id="music-volume-help">Cold Steel Prayer // Heavy Weather</p>
+            </div>
+
+            <div class="sound-control">
+              <div class="sound-control-heading">
+                <label for="sfx-volume">Sound effects</label>
+                <output id="sfx-volume-output" for="sfx-volume">50%</output>
+              </div>
+              <input
+                id="sfx-volume"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value="50"
+                aria-describedby="sfx-volume-help"
+              />
+              <p id="sfx-volume-help">Contact zap + weapon shot + enemy impact</p>
+            </div>
+          </section>
+
+          <section class="testing-panel" aria-labelledby="testing-title">
+            <div class="testing-heading">
+              <h3 id="testing-title">Testing</h3>
+              <span>Active run only</span>
+            </div>
+            <p id="testing-upgrade-help">Grant upgrades directly for balance testing.</p>
+            <div id="testing-upgrade-buttons" class="testing-upgrade-buttons" aria-describedby="testing-upgrade-help"></div>
+          </section>
+
+          <button id="close-options-button" type="button">Return</button>
+        </div>
+      </dialog>
+
+      <dialog id="game-over-dialog" class="game-over-dialog" aria-labelledby="game-over-title">
+        <div class="dialog-frame game-over-frame">
+          <p class="eyebrow">SUBJECT VITALS // ZERO</p>
+          <h2 id="game-over-title">Game Over</h2>
+          <p class="game-over-copy">Test subject terminated.</p>
+
+          <div class="game-over-actions" aria-label="Game over actions">
+            <button id="try-again-button" type="button">Try Again</button>
+            <button id="main-menu-button" type="button">Main Menu</button>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog id="level-up-dialog" class="level-up-dialog" aria-labelledby="level-up-title">
+        <div class="dialog-frame level-up-frame">
+          <p class="eyebrow">ADAPTATION THRESHOLD REACHED</p>
+          <h2 id="level-up-title">Level Up</h2>
+          <p class="level-up-copy">Select one mutation protocol.</p>
+          <div id="level-up-choices" class="level-up-choices" aria-label="Level up choices"></div>
+        </div>
+      </dialog>
+
+      <section id="exit-screen" class="exit-screen" aria-live="polite" hidden>
+        <p>SESSION TERMINATED</p>
+        <button id="resume-button" type="button">Reconnect</button>
+      </section>
+
+      <section id="level-hud" class="level-hud" aria-label="Level controls" hidden>
+        <div class="level-status-cluster">
+          <span class="level-status">
+            <strong>LEVEL 01</strong>
+            <b id="hit-counter">HITS 00</b>
+          </span>
+          <dl class="stats-graphic" aria-label="Player statistics">
+            <div><dt>LVL</dt><dd id="stat-level">1</dd></div>
+            <div><dt>MAX HP</dt><dd id="stat-health">100</dd></div>
+            <div><dt>SPEED</dt><dd id="stat-speed">230</dd></div>
+            <div><dt>RELOAD</dt><dd id="stat-reload">1.50s</dd></div>
+            <div><dt>MAGNET</dt><dd id="stat-magnetism">10.00px</dd></div>
+            <div><dt>VOLLEY</dt><dd id="stat-volley">1x</dd></div>
+            <div><dt>PEN</dt><dd id="stat-penetration">1x</dd></div>
+          </dl>
+        </div>
+
+        <div class="player-vitals">
+          <div
+            id="player-xp"
+            class="player-xp"
+            role="progressbar"
+            aria-label="Player experience"
+            aria-valuemin="0"
+            aria-valuemax="5"
+            aria-valuenow="0"
+            aria-valuetext="0 of 5 XP toward subject level 2; 0 total XP earned"
+          >
+            <div class="xp-label">
+              <span id="xp-level-label">SUBJECT LV 1 // EXPERIENCE</span>
+              <output id="player-xp-output">0 / 5 XP</output>
+            </div>
+            <div class="xp-track" aria-hidden="true">
+              <i id="player-xp-fill"></i>
+            </div>
+          </div>
+
+          <div
+            id="player-health"
+            class="player-health"
+            role="progressbar"
+            aria-label="Player health"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="100"
+          >
+            <div class="health-label">
+              <span>PLAYER HP</span>
+              <output id="player-health-output">100 / 100</output>
+            </div>
+            <div class="health-track" aria-hidden="true">
+              <i id="player-health-fill"></i>
+            </div>
+          </div>
+
+          <div id="weapon-status" class="weapon-status" role="status">
+            <span>AUTO FIRE</span>
+            <output id="weapon-status-output">AIM REQUIRED</output>
+            <span class="weapon-reload-track" aria-hidden="true">
+              <i id="weapon-reload-fill"></i>
+            </span>
+          </div>
+          <div id="electro-status" class="electro-status" role="status" data-unlocked="false">
+            <span>E-THERAPY</span>
+            <output id="electro-status-output">LOCKED</output>
+            <span class="electro-cooldown-track" aria-hidden="true">
+              <i id="electro-cooldown-fill"></i>
+            </span>
+          </div>
+        </div>
+
+        <span class="level-controls">
+          <span class="control-hint">
+            <span class="desktop-control-hint">AIM: MOUSE / R-STICK · FIRE: LMB / SPACE / RT</span>
+            <span class="mobile-control-hint">AIM R-STICK · RT FIRE</span>
+          </span>
+          <button id="level-options-button" type="button">Options</button>
+        </span>
+      </section>
+
+      <audio
+        id="menu-music"
+        src="%BASE_URL%audio/cold-steel-prayer.mp3"
+        preload="auto"
+        loop
+      ></audio>
+      <audio
+        id="level-music"
+        src="%BASE_URL%audio/heavy-weather.mp3"
+        preload="auto"
+        loop
+      ></audio>
+      <audio
+        id="contact-zap"
+        src="%BASE_URL%audio/contact-zap.mp3"
+        preload="auto"
+      ></audio>
+      <audio
+        id="weapon-shot"
+        src="%BASE_URL%audio/weapon-shot.mp3"
+        preload="auto"
+      ></audio>
+      <audio
+        id="weapon-impact"
+        src="%BASE_URL%audio/weapon-impact.mp3"
+        preload="auto"
+      ></audio>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
