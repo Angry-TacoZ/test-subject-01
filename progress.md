@@ -117,6 +117,9 @@ One title, one short system message, and three primary actions. No gameplay or p
 - Increased each charger's single XP pickup value from 1 to 2 while preserving the circle enemy's 1-XP reward.
 - On `codex/enemy-color-lunge-speed`, introduced a reusable red-family palette: circle pursuers remain crimson and Chargers use vermilion, with shape retained as the primary non-color cue. Increased Charger lunge velocity from 3× to 4.5× base speed while preserving its 250 px distance and 10-second cooldown.
 - Verified the palette in a live 1280×720 frame containing both enemy types and through runtime color telemetry. The targeted Charger test confirmed 4.5× lunge velocity, exactly 250 px charge travel, normal pursuit afterward, 2 contact damage, and 2 XP; all 13 local browser regressions, the required gameplay client, production build, secret scan, and canonical verifier passed with no captured browser errors. The existing Phaser bundle-size warning remains non-blocking.
+- On `codex/projectile-knockback`, added an 8 px directional shove before standard-projectile damage, plus a 120 ms pale-red displacement streak/ring so impacts remain visible against current 1-HP enemies. Shotgun pellets, Double Shot, and Penetrating Shot inherit the behavior through the shared projectile path; Electro Therapy remains excluded.
+- Visually inspected the knockback frame at 1280×720 and confirmed the short streak/ring remains restrained and readable. Targeted telemetry measured the full 8 px shove and verified the XP pickup inherits the displaced endpoint; all 13 local browser regressions and the required gameplay client passed with no captured browser errors, including shotgun, Double Shot, Penetrating Shot, Electro Therapy, mobile auto-fire, keyboard, and Xbox paths.
+- Production build, predeploy secret/API exposure scan, and canonical project verifier passed. The existing Phaser bundle-size warning remains non-blocking.
 
 ## Next
 

@@ -9,6 +9,8 @@ const BASE_PLAYER_SPEED = 230;
 const PROJECTILE_SPEED = 650;
 const PROJECTILE_RADIUS = 4;
 const PROJECTILE_DAMAGE = 1;
+const PROJECTILE_KNOCKBACK_DISTANCE = 8;
+const PROJECTILE_IMPACT_LIFETIME_MS = 120;
 const DOUBLE_SHOT_DELAY_MS = 500;
 const NANITE_REHAB_HEALING = 1;
 const NANITE_REHAB_INTERVAL_MS = 2000;
@@ -257,6 +259,7 @@ class TitleScene extends Phaser.Scene {
     this.gamepadMovement = { x: 0, y: 0 };
     this.gamepadFireHeld = false;
     this.projectiles = [];
+    this.projectileImpactBursts = [];
     this.pendingWeaponShots = [];
     this.electroProjectiles = [];
     this.pendingElectroShots = [];
@@ -268,6 +271,8 @@ class TitleScene extends Phaser.Scene {
     this.electroChainHits = 0;
     this.projectilePenetrations = 0;
     this.completedPenetrations = 0;
+    this.projectileKnockbacks = 0;
+    this.lastProjectileKnockback = null;
     this.naniteRegenAccumulatorMs = 0;
     this.naniteHealingApplied = 0;
     this.survivalElapsedMs = 0;
@@ -536,6 +541,7 @@ class TitleScene extends Phaser.Scene {
     this.hits = 0;
     this.impactFlashMs = 0;
     this.projectiles = [];
+    this.projectileImpactBursts = [];
     this.pendingWeaponShots = [];
     this.electroProjectiles = [];
     this.pendingElectroShots = [];
@@ -547,6 +553,8 @@ class TitleScene extends Phaser.Scene {
     this.electroChainHits = 0;
     this.projectilePenetrations = 0;
     this.completedPenetrations = 0;
+    this.projectileKnockbacks = 0;
+    this.lastProjectileKnockback = null;
     this.naniteRegenAccumulatorMs = 0;
     this.naniteHealingApplied = 0;
     this.survivalElapsedMs = 0;
@@ -700,6 +708,7 @@ class TitleScene extends Phaser.Scene {
     this.hits = 0;
     this.impactFlashMs = 0;
     this.projectiles = [];
+    this.projectileImpactBursts = [];
     this.pendingWeaponShots = [];
     this.electroProjectiles = [];
     this.pendingElectroShots = [];
@@ -711,6 +720,8 @@ class TitleScene extends Phaser.Scene {
     this.electroChainHits = 0;
     this.projectilePenetrations = 0;
     this.completedPenetrations = 0;
+    this.projectileKnockbacks = 0;
+    this.lastProjectileKnockback = null;
     this.naniteRegenAccumulatorMs = 0;
     this.naniteHealingApplied = 0;
     this.survivalElapsedMs = 0;
@@ -1167,8 +1178,10 @@ class TitleScene extends Phaser.Scene {
     this.electroProjectiles = survivors;
   }
 
-  updateProjectiles(deltaSeconds, _deltaMs) {
+  updateProjectiles(deltaSeconds, deltaMs) {
     const arena = this.getArenaBounds();
+    for (const burst of this.projectileImpactBursts) burst.lifeMs -= deltaMs;
+    this.projectileImpactBursts = this.projectileImpactBursts.filter((burst) => burst.lifeMs > 0);
     const survivingProjectiles = [];
     for (const projectile of this.projectiles) {
       projectile.previousX = projectile.x;
@@ -1197,7 +1210,10 @@ class TitleScene extends Phaser.Scene {
         playWeaponImpactSfx();
         projectile.hitEnemyIds.push(hitEnemy.id);
         projectile.hitCount += 1;
-        this.damageEnemy(hitEnemy, projectile.damage);
+        const knockback = this.applyProjectileKnockback(hitEnemy, projectile);
+        const killed = this.damageEnemy(hitEnemy, projectile.damage);
+        knockback.killed = killed;
+        this.lastProjectileKnockback = knockback;
         if (projectile.hitCount >= projectile.hitLimit) {
           if (projectile.hitLimit > 1) this.completedPenetrations += 1;
           continue;
@@ -1215,6 +1231,37 @@ class TitleScene extends Phaser.Scene {
       if (!touchesArenaEdge && !reachedRange) survivingProjectiles.push(projectile);
     }
     this.projectiles = survivingProjectiles;
+  }
+
+  applyProjectileKnockback(enemy, projectile) {
+    const speed = Math.max(0.001, Math.hypot(projectile.vx, projectile.vy));
+    const direction = {
+      x: projectile.vx / speed,
+      y: projectile.vy / speed,
+    };
+    const fromX = enemy.x;
+    const fromY = enemy.y;
+    enemy.x += direction.x * PROJECTILE_KNOCKBACK_DISTANCE;
+    enemy.y += direction.y * PROJECTILE_KNOCKBACK_DISTANCE;
+    this.resolveArenaBoundary(enemy);
+    const distance = Math.hypot(enemy.x - fromX, enemy.y - fromY);
+    this.projectileImpactBursts.push({
+      fromX,
+      fromY,
+      toX: enemy.x,
+      toY: enemy.y,
+      lifeMs: PROJECTILE_IMPACT_LIFETIME_MS,
+    });
+    this.projectileKnockbacks += 1;
+    return {
+      enemyId: enemy.id,
+      distance,
+      configuredDistance: PROJECTILE_KNOCKBACK_DISTANCE,
+      direction,
+      from: { x: fromX, y: fromY },
+      to: { x: enemy.x, y: enemy.y },
+      killed: false,
+    };
   }
 
   damageEnemy(enemy, damage) {
@@ -1757,6 +1804,14 @@ class TitleScene extends Phaser.Scene {
       this.graphics.fillCircle(projectile.x, projectile.y, projectile.radius + 7);
       this.graphics.fillStyle(0xe7feff, 1);
       this.graphics.fillCircle(projectile.x, projectile.y, projectile.radius);
+    }
+
+    for (const burst of this.projectileImpactBursts) {
+      const alpha = Phaser.Math.Clamp(burst.lifeMs / PROJECTILE_IMPACT_LIFETIME_MS, 0, 1);
+      this.graphics.lineStyle(2, 0xffc7d1, alpha * 0.9);
+      this.graphics.lineBetween(burst.fromX, burst.fromY, burst.toX, burst.toY);
+      this.graphics.lineStyle(1, 0xffffff, alpha * 0.8);
+      this.graphics.strokeCircle(burst.toX, burst.toY, 7 + (1 - alpha) * 5);
     }
 
     for (const drop of this.xpDrops) {
@@ -2441,6 +2496,32 @@ window.render_game_to_text = () => {
             projectileHitLimit: scene.getProjectileHitLimit(),
             projectilePenetrations: scene.projectilePenetrations,
             completedPenetrations: scene.completedPenetrations,
+            knockback: {
+              distance: PROJECTILE_KNOCKBACK_DISTANCE,
+              appliesTo: "standard bullets and shotgun pellets",
+              electroTherapyApplied: false,
+              totalApplied: scene.projectileKnockbacks,
+              last: scene.lastProjectileKnockback
+                ? {
+                    ...scene.lastProjectileKnockback,
+                    distance: roundCoordinate(scene.lastProjectileKnockback.distance),
+                    direction: {
+                      x: roundCoordinate(scene.lastProjectileKnockback.direction.x),
+                      y: roundCoordinate(scene.lastProjectileKnockback.direction.y),
+                    },
+                    from: {
+                      x: roundCoordinate(scene.lastProjectileKnockback.from.x),
+                      y: roundCoordinate(scene.lastProjectileKnockback.from.y),
+                    },
+                    to: {
+                      x: roundCoordinate(scene.lastProjectileKnockback.to.x),
+                      y: roundCoordinate(scene.lastProjectileKnockback.to.y),
+                    },
+                  }
+                : null,
+              activeImpactBursts: scene.projectileImpactBursts.length,
+              impactLifetimeMs: PROJECTILE_IMPACT_LIFETIME_MS,
+            },
             doubleShotDelayMs: DOUBLE_SHOT_DELAY_MS,
             volleySize: scene.getWeaponVolleySize() * (scene.upgradeRanks.doubleShot > 0 ? 2 : 1),
             standardWeapon: {
