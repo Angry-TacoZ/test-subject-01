@@ -688,7 +688,7 @@ class TitleScene extends Phaser.Scene {
     }
     const mobileAutoFire = usesMobileTouchInterface() && !state.gamepadConnected;
     const mobileAutoTarget = mobileAutoFire && this.updateMobileAutoAim();
-    this.tryFireElectroTherapy();
+    if (!mobileAutoFire || mobileAutoTarget) this.tryFireElectroTherapy();
     const activePointer = this.input.activePointer;
     const mouseFireHeld = Boolean(
       activePointer?.isDown &&
@@ -2456,6 +2456,7 @@ if (import.meta.env.DEV) {
       scene.entities = scene.entities.slice(0, 1);
       scene.spawnAccumulator = 0;
       scene.weaponReloadMs = 0;
+      scene.electroCooldownMs = 0;
       return true;
     },
   };

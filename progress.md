@@ -111,6 +111,7 @@ One title, one short system message, and three primary actions. No gameplay or p
 - On `codex/mobile-hud-autofire-fullscreen`, changed the arena to reserve the HUD's measured height, added phone-sized coarse-pointer auto-aim/auto-fire while preserving touch movement, and added a supported-browser Fullscreen control. Targeted 706×527 DPR2 mobile verification measured a 12 px HUD/arena gap, acquired the nearest enemy, fired automatically, moved through touch, and entered/exited fullscreen without browser errors.
 - Verified the final 390×844 portrait layout keeps Fullscreen and Options fully inside the viewport and moves the complete HUD above the arena with a 12 px gap. Desktop gameplay, Xbox input, game-over/retry, production build, predeploy secret scan, and the canonical verifier passed; the verifier required UTF-8 console mode on Windows after its first output-rendering attempt encountered a CP1252 checkmark error.
 - External AI review found that mobile auto-fire could reuse its last aim vector during a gap with no enemies. Changed the fire gate to require a current nearest-enemy target and added a regression sequence that verifies silence in an empty arena followed by automatic resumption when the next enemy spawns.
+- Follow-up external AI review found Electro Therapy used a separate unconditional firing path and could still reuse the stale mobile aim vector. Applied the same current-target gate to Electro Therapy while leaving desktop/controller behavior unchanged, and extended the empty-arena regression to cover both weapons.
 
 ## Next
 
