@@ -113,6 +113,8 @@ Enemy spawn positions, in enemy order:
 | Damage | 1 HP | Removes the current 1-HP red enemies |
 | Projectile speed | 650 px/s | Fixed travel speed |
 | Projectile radius | 4 px | Collision and rendered radius |
+| Projectile knockback | 8 px per hit | Standard bullets and shotgun pellets shove the target in their travel direction before damage resolves; arena boundaries clamp the displacement |
+| Knockback impact cue | 120 ms | A short pale-red displacement streak and expanding ring make the shove visible even when a 1-HP enemy dies immediately |
 | Projectile endpoint | Enemy impact or arena-edge contact | No time-based expiration |
 | Shotgun | Epic; one-time replacement | Replaces the standard single shot with 3 pellets at -12°, 0°, and +12° |
 | Shotgun range | 420 px | Each pellet despawns at this travel distance or an earlier enemy/arena endpoint |
@@ -299,3 +301,4 @@ Enemy spawn positions, in enemy order:
 - Added a phone Fullscreen button using the browser Fullscreen API, with automatic hiding on unsupported browsers.
 - Added red triangle charger enemies: 2 contact damage, a 2-XP drop, a 250 px trigger radius, a direction-locked 250 px lunge at 3× base speed, and a 10-second lunge cooldown. One charger spawns at 0:30 and every 10 active seconds afterward through 2:50.
 - Added a reusable red-family enemy palette: circle pursuers remain crimson while Chargers use vermilion, with silhouette retained as the primary role cue. Increased Charger lunge speed by 50%, from 3× to 4.5× base speed, without changing its 250 px travel distance or 10-second cooldown.
+- Added an 8 px direction-based knockback to every standard bullet and shotgun-pellet hit. The shove resolves before damage so defeated enemies drop XP at the displaced position; a 120 ms impact streak/ring makes the movement readable. Electro Therapy is excluded because it is an electrical arc rather than a mass-carrying projectile.

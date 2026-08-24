@@ -10,6 +10,17 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 
 ## Patch notes
 
+### Projectile Impact Update — August 24, 2026
+
+#### Combat feedback
+
+- Standard bullets and shotgun pellets now shove enemies 8 px in their travel direction on impact.
+- Added a brief displacement streak and impact ring so the recoil remains visible when a 1-HP enemy is destroyed immediately.
+- Knockback resolves before damage, causing defeated enemies to leave their XP pickup at the pushed position.
+- Electro Therapy remains unchanged because its electrical arcs do not carry projectile mass.
+
+[Full change and review history: PR #6](https://github.com/Angry-TacoZ/test-subject-01/pull/6)
+
 ### Enemy Readability Update — August 24, 2026
 
 #### Enemy visuals
