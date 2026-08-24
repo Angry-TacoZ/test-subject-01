@@ -8,6 +8,33 @@ An incrementally built Phaser game. Each prompt adds one observable change to th
 
 The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/test-subject-01/).
 
+## Patch notes
+
+### Survival Protocol Update — August 23, 2026
+
+#### New upgrades
+
+- **Nanite Rehab — Rare:** Regenerates 1 HP after every two full seconds spent injured.
+- **Shotgun — Epic:** Replaces the standard weapon with three short-range spread pellets. Cycling Rate, Double Shot, and Penetrating Shot all apply.
+
+#### New objective
+
+- Level 01 is now a three-minute survival trial.
+- Survive until the timer reaches zero to complete the run and open the new **You Survived** screen.
+- The survival timer pauses during Options and level-up choices.
+
+#### Interface
+
+- Added the survival countdown, current weapon, regeneration, and expanded volley statistics to the gameplay HUD.
+- Added Nanite Rehab and Shotgun to the level-up pool and balance-testing menu.
+
+#### Fixes
+
+- Shotgun pellets stop at their exact 420 px maximum range.
+- Nanite Rehab no longer stores regeneration time while the player is at full health.
+
+[Full change and review history: PR #1](https://github.com/Angry-TacoZ/test-subject-01/pull/1)
+
 ## Run locally
 
 ```powershell
