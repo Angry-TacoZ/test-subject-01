@@ -18,7 +18,8 @@
         <nav class="menu-actions" aria-label="Main menu">
           <button id="start-button" type="button"><span>01</span> Start</button>
           <button id="options-button" type="button"><span>02</span> Options</button>
-          <button id="exit-button" type="button"><span>03</span> Exit</button>
+          <button id="about-button" type="button"><span>03</span> About</button>
+          <button id="exit-button" type="button"><span>04</span> Exit</button>
         </nav>
 
         <p id="system-status" class="system-status" role="status" aria-live="polite">
@@ -81,6 +82,25 @@
           </section>
 
           <button id="close-options-button" type="button">Return</button>
+        </div>
+      </dialog>
+
+      <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-title">
+        <div class="dialog-frame about-frame">
+          <p class="eyebrow">CREATOR IDENTIFICATION</p>
+          <h2 id="about-title">About</h2>
+          <p class="about-name">James Lane</p>
+          <nav class="about-links" aria-label="James Lane links">
+            <a href="https://jamesai.space" target="_blank" rel="noopener noreferrer">
+              <span>Portfolio</span>
+              <strong>jamesai.space</strong>
+            </a>
+            <a href="https://www.linkedin.com/in/james-lane-1051291a9" target="_blank" rel="noopener noreferrer">
+              <span>LinkedIn</span>
+              <strong>james-lane-1051291a9</strong>
+            </a>
+          </nav>
+          <button id="close-about-button" type="button">Return</button>
         </div>
       </dialog>
 
