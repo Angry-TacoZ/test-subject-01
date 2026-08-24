@@ -44,7 +44,8 @@ This is the human-readable record of accepted gameplay and system values. Update
 | Value | Current setting | Notes |
 | --- | ---: | --- |
 | Shape | Red triangle | Points in its current movement/lunge direction |
-| Health | 1 HP | Uses the same projectile, death, and XP-drop behavior as circle enemies |
+| Health | 1 HP | Uses the same projectile and death behavior as circle enemies |
+| XP value | 2 XP | Drops one neon-orange pickup worth 2 XP on death |
 | Contact damage | 2 HP | Uses the shared 650 ms per-enemy contact debounce |
 | Base pursuit speed | 62, 76, or 90 px/s | Uses the existing repeating enemy speed sequence |
 | Lunge trigger | Player within 250 px | Requires the individual charger's lunge cooldown to be ready |
@@ -119,7 +120,8 @@ Enemy spawn positions, in enemy order:
 | Value | Current setting | Notes |
 | --- | ---: | --- |
 | Drop trigger | Enemy reaches 0 HP | One drop appears at the enemy's death position |
-| Drop value | 1 XP | Added on player contact |
+| Circle-enemy drop value | 1 XP | Added on player contact |
+| Charger drop value | 2 XP | Triangle enemies drop one pickup carrying 2 XP |
 | Drop radius | 2 px | 4 px diameter; half the current 8 px projectile diameter |
 | Drop movement | Stationary outside magnetism | Pulls toward the player at 240 px/s inside the attraction boundary |
 | Pickup radius | Player radius + drop radius | Absorbed when the two circles touch |
@@ -286,4 +288,4 @@ Enemy spawn positions, in enemy order:
 - Changed the arena's top boundary to reserve the HUD's measured rendered height, preventing the expanded stat panel from overlapping phone gameplay in landscape.
 - Added phone touch auto-aim and reload-gated auto-fire against the nearest enemy while retaining touch-tap movement; connecting a gamepad restores manual right-stick aiming.
 - Added a phone Fullscreen button using the browser Fullscreen API, with automatic hiding on unsupported browsers.
-- Added red triangle charger enemies: 2 contact damage, a 250 px trigger radius, a direction-locked 250 px lunge at 3× base speed, and a 10-second lunge cooldown. One charger spawns at 0:30 and every 10 active seconds afterward through 2:50.
+- Added red triangle charger enemies: 2 contact damage, a 2-XP drop, a 250 px trigger radius, a direction-locked 250 px lunge at 3× base speed, and a 10-second lunge cooldown. One charger spawns at 0:30 and every 10 active seconds afterward through 2:50.

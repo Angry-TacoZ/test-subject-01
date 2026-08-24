@@ -30,7 +30,9 @@ const BASE_MAGNETISM_DISTANCE = 10;
 const MAGNETISM_UPGRADE_STEP = 10;
 const XP_MAGNET_PULL_SPEED = 240;
 const ENEMY_CONTACT_DAMAGE = 1;
+const ENEMY_XP_VALUE = 1;
 const CHARGER_CONTACT_DAMAGE = 2;
+const CHARGER_XP_VALUE = 2;
 const CHARGER_FIRST_SPAWN_MS = 30000;
 const CHARGER_SPAWN_INTERVAL_MS = 10000;
 const CHARGER_LUNGE_COOLDOWN_MS = 10000;
@@ -637,6 +639,7 @@ class TitleScene extends Phaser.Scene {
       angle,
       hitCooldownMs: 0,
       contactDamage: enemyType === "charger" ? CHARGER_CONTACT_DAMAGE : ENEMY_CONTACT_DAMAGE,
+      xpValue: enemyType === "charger" ? CHARGER_XP_VALUE : ENEMY_XP_VALUE,
       lungeActive: false,
       lungeCooldownMs: 0,
       lungeRemainingDistance: 0,
@@ -1209,7 +1212,7 @@ class TitleScene extends Phaser.Scene {
       x: enemy.x,
       y: enemy.y,
       radius: XP_DROP_RADIUS,
-      value: 1,
+      value: enemy.xpValue,
     });
     this.nextXpDropId += 1;
     this.entities = this.entities.filter((entity) => entity !== enemy);
@@ -2371,6 +2374,7 @@ window.render_game_to_text = () => {
             vy: roundCoordinate(enemy.vy),
             hitCooldownMs: roundCoordinate(enemy.hitCooldownMs),
             contactDamage: enemy.contactDamage,
+            xpValue: enemy.xpValue,
             lunge: enemy.enemyType === "charger"
               ? {
                   active: enemy.lungeActive,
