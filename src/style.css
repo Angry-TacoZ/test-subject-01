@@ -85,8 +85,8 @@ body {
 
 .stats-graphic {
   display: grid;
-  grid-template-columns: repeat(7, minmax(46px, 1fr));
-  width: min(450px, 40vw);
+  grid-template-columns: repeat(9, minmax(46px, 1fr));
+  width: min(590px, 46vw);
   margin: 11px 0 0;
   border-top: 1px solid rgb(66 245 255 / 34%);
   border-left: 1px solid rgb(66 245 255 / 18%);
@@ -309,6 +309,11 @@ body {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-shadow: 0 0 12px rgb(255 51 79 / 45%);
+}
+
+#survival-timer {
+  color: #ff9b2f;
+  text-shadow: 0 0 12px rgb(255 155 47 / 45%);
 }
 
 #game-canvas,
@@ -535,6 +540,46 @@ dialog::backdrop {
 .game-over-actions button:focus-visible {
   color: #02070b;
   background: #ff5369;
+}
+
+.game-over-dialog[data-outcome="survived"] {
+  border-color: #54ff79;
+  box-shadow:
+    0 0 60px rgb(84 255 121 / 22%),
+    inset 0 0 24px rgb(66 245 255 / 10%);
+}
+
+.game-over-dialog[data-outcome="survived"]::backdrop {
+  background:
+    linear-gradient(rgb(0 8 8 / 86%), rgb(0 14 8 / 88%)),
+    repeating-linear-gradient(to bottom, transparent 0 3px, rgb(84 255 121 / 10%) 4px);
+}
+
+.game-over-dialog[data-outcome="survived"] .game-over-frame {
+  border-color: rgb(84 255 121 / 36%);
+}
+
+.game-over-dialog[data-outcome="survived"] .eyebrow,
+.game-over-dialog[data-outcome="survived"] h2 {
+  color: #dfffe7;
+  text-shadow: 0 0 22px rgb(84 255 121 / 42%);
+}
+
+.game-over-dialog[data-outcome="survived"] .game-over-copy {
+  color: #8ab7a0;
+}
+
+.game-over-dialog[data-outcome="survived"] .game-over-actions {
+  border-color: rgb(84 255 121 / 34%);
+}
+
+.game-over-dialog[data-outcome="survived"] .game-over-actions button {
+  border-color: rgb(84 255 121 / 52%);
+}
+
+.game-over-dialog[data-outcome="survived"] .game-over-actions button:hover,
+.game-over-dialog[data-outcome="survived"] .game-over-actions button:focus-visible {
+  background: #54ff79;
 }
 
 .level-up-dialog {

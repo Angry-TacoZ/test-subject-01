@@ -71,6 +71,8 @@ Enemy spawn positions, in enemy order:
 | Ram impact flash | 180 ms | Red impact-ring feedback |
 | Player health HUD | Top center | Displays numeric HP and a neon progress bar |
 | Death threshold | 0 HP | Pauses gameplay and opens Game Over |
+| Survival duration | 180,000 ms (3:00) | Counts active gameplay only; Options and level-up choices pause the timer |
+| Survival result | You Survived | Pauses gameplay/music and presents Try Again and Main Menu |
 | Try Again | Full level reset | Restores 100 HP and resets hits, enemies, XP, weapon, and spawn clock |
 | Main Menu | Return to title | Clears the active level and resumes menu music |
 
@@ -85,6 +87,9 @@ Enemy spawn positions, in enemy order:
 | Projectile speed | 650 px/s | Fixed travel speed |
 | Projectile radius | 4 px | Collision and rendered radius |
 | Projectile endpoint | Enemy impact or arena-edge contact | No time-based expiration |
+| Shotgun | Epic; one-time replacement | Replaces the standard single shot with 3 pellets at -12°, 0°, and +12° |
+| Shotgun range | 420 px | Each pellet despawns at this travel distance or an earlier enemy/arena endpoint |
+| Shotgun upgrade compatibility | Cycling Rate, Double Shot, Penetrating Shot | Double Shot repeats all 3 pellets; each pellet independently inherits penetration |
 | Aim methods | Mouse or Xbox right stick | Manual direction only; no auto aim |
 | Mouse fire | Left click or Space | Uses current mouse aim direction |
 | Controller fire | Xbox right trigger | Hold to fire again whenever reload completes |
@@ -109,14 +114,15 @@ Enemy spawn positions, in enemy order:
 | Common rarity | Green; weight 1.00 per upgrade | Baseline selection weight |
 | Rare rarity | Blue; weight 0.20 per upgrade | Each Rare is selected at 0.2× the rate of each Common |
 | Epic rarity | Purple; weight 0.04 per upgrade | Each Epic is selected at 0.2× the rate of each Rare |
-| Current Rare offer chance | About 19.8% for either Rare | Two draws without replacement from four Commons plus two 0.20-weight Rares; each individual Rare appears about 10.1% of the time until owned |
-| Current Epic offer chance | About 2.0% per level-up | Two weighted draws from the current four Commons, two Rares, and one 0.04-weight Epic until owned |
+| Current Rare offer chance | About 27.0% for any Rare | Two weighted draws without replacement from four Commons, three 0.20-weight Rares, and two 0.04-weight Epics until owned |
+| Current Epic offer chance | About 3.8% for either Epic | Two weighted draws without replacement from the current four Commons, three Rares, and two Epics until owned |
 | Vital Capacity | +20 maximum and current HP | Cumulative for the active run |
 | Motor Response | +10% base movement speed | Cumulative for the active run |
 | Cycling Rate | +10% reload rate | Cumulative for the active run |
 | Field Extension | +10 px magnetism distance | Cumulative and additive for the active run |
 | Double Shot | Rare; one-time unlock | Fires one follow-up projectile 500 ms after every primary shot |
 | Penetrating Shot | Rare; one-time unlock | Each projectile kills and passes through its first enemy, then despawns after striking a second |
+| Nanite Rehab | Rare; one-time unlock | Restores 1 HP every 2,000 ms of active gameplay while below maximum health |
 | Electro Therapy | Epic; one-time additional weapon | Automatically fires along the current manual aim direction when ready |
 | Electro Therapy damage | 2 per target | Initial impact and chained target each receive 2 damage |
 | Electro Therapy base cooldown | 5,000 ms | Cycling Rate applies using `5,000 / (1 + 0.10 × ranks)` ms |
@@ -125,7 +131,7 @@ Enemy spawn positions, in enemy order:
 | Electro Therapy + Penetrating Shot | No effect | Electro Therapy uses its own impact-and-chain termination behavior |
 | Level-up pause | Enabled | Enemies, spawning, projectiles, cooldowns, and movement freeze |
 | XP bar position | Above player HP | Shows current XP / current doubled requirement |
-| Stats graphic | Top-left HUD | Shows level, max HP, speed, reload duration, magnetism, volley size, and projectile hit limit |
+| Stats graphic | Top-left HUD | Shows level, max HP, speed, reload duration, magnetism, pellet/Double Shot volley size, projectile hit limit, regeneration, and weapon mode |
 
 ### Testing menu
 
@@ -134,7 +140,7 @@ Enemy spawn positions, in enemy order:
 | Location | Options → Testing | Available from menu and active gameplay Options |
 | Active-run requirement | Enabled only during Level 01 | Buttons are disabled on the title screen because there is no player run to modify |
 | Common grants | Repeatable | Each press adds another rank for direct balance testing |
-| Rare/Epic grants | One-time | Double Shot, Penetrating Shot, and Electro Therapy disable after being granted |
+| Rare/Epic grants | One-time | Double Shot, Penetrating Shot, Nanite Rehab, Electro Therapy, and Shotgun disable after being granted |
 | Input support | Mouse, touch, keyboard, Xbox controller | Uses semantic buttons and the existing Options focus navigation |
 
 ### Xbox controller
@@ -161,7 +167,7 @@ Enemy spawn positions, in enemy order:
 | Starting volume | 50% | Middle of the Options slider |
 | Slider range | 0–100% | Step size is 1%; controls both music tracks |
 | Loop | Enabled | Each track loops in its assigned scene |
-| Level-music pauses | Game Over and Main Menu | Continues through Options and level-up choices; Try Again restarts it |
+| Level-music pauses | Game Over, You Survived, and Main Menu | Continues through Options and level-up choices; Try Again restarts it |
 | Autoplay behavior | First interaction | Required by browser audio policy |
 | Contact SFX | Electric zap, first 1.000 seconds | `public/audio/contact-zap.mp3` |
 | Starting SFX volume | 50% | Independent Options slider |
@@ -248,3 +254,6 @@ Enemy spawn positions, in enemy order:
 - Made the Double Shot/Penetrating Shot combination explicit: the primary bullet and queued follow-up now capture the same two-hit limit when the trigger is accepted, ensuring both penetrate independently.
 - Added Epic Electro Therapy. It renders as a short neon-yellow electrical streak, deals 2 damage, chains after 120 ms to the nearest second enemy within 180 px, and uses a 5,000 ms base cooldown modified by Cycling Rate.
 - Double Shot gives Electro Therapy a second independent bolt after 500 ms; Penetrating Shot is intentionally excluded. Added the yellow E-THERAPY cooldown HUD, purple Epic card, Testing grant, runtime telemetry, and value logging.
+- Added Rare Nanite Rehab: it restores 1 missing HP every 2 seconds of active gameplay and pauses with the rest of the simulation.
+- Added Epic Shotgun as a standard-weapon replacement: 3 pellets at -12/0/+12 degrees with a 420 px range. Cycling Rate applies; Double Shot repeats the full blast; Penetrating Shot applies independently to every pellet.
+- Added a three-minute active-game survival timer and a green You Survived result with the same Try Again/Main Menu controls as Game Over.
