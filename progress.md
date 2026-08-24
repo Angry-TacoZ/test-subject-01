@@ -115,6 +115,8 @@ One title, one short system message, and three primary actions. No gameplay or p
 - On `codex/about-menu`, added an About action between Options and Exit with creator credit for James Lane plus external portfolio and LinkedIn links, using a semantic modal and controller-aware focus navigation.
 - On `codex/charger-enemy`, added a red triangle charger with 1 HP, 2 contact damage, normal pursuit, and a direction-locked 250 px lunge at 3× base speed when the player is within 250 px. Each charger has a 10-second lunge cooldown; one spawns at 0:30 and every 10 active seconds through 2:50.
 - Increased each charger's single XP pickup value from 1 to 2 while preserving the circle enemy's 1-XP reward.
+- On `codex/enemy-color-lunge-speed`, introduced a reusable red-family palette: circle pursuers remain crimson and Chargers use vermilion, with shape retained as the primary non-color cue. Increased Charger lunge velocity from 3× to 4.5× base speed while preserving its 250 px distance and 10-second cooldown.
+- Verified the palette in a live 1280×720 frame containing both enemy types and through runtime color telemetry. The targeted Charger test confirmed 4.5× lunge velocity, exactly 250 px charge travel, normal pursuit afterward, 2 contact damage, and 2 XP; all 13 local browser regressions, the required gameplay client, production build, secret scan, and canonical verifier passed with no captured browser errors. The existing Phaser bundle-size warning remains non-blocking.
 
 ## Next
 

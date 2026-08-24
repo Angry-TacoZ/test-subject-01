@@ -39,17 +39,26 @@ This is the human-readable record of accepted gameplay and system values. Update
 | Ram hit cooldown | 650 ms per enemy | Prevents a sustained overlap counting every frame |
 | Spawn positions | See list below | Fractions of playable-arena width and height |
 
+#### Enemy color system
+
+| Enemy | Red-family hue | Body | Outline | Identification rule |
+| --- | --- | ---: | ---: | --- |
+| Circle pursuer | Crimson | `#ff334f` | `#ff9bab` | Circle silhouette is the primary cue |
+| Charger triangle | Vermilion | `#ff5a36` | `#ffc0a3` | Triangle silhouette is the primary cue |
+
+Enemy roles remain readable without color: silhouette is the primary identifier, while distinct red-family hues provide a secondary visual cue.
+
 #### Charger triangle
 
 | Value | Current setting | Notes |
 | --- | ---: | --- |
-| Shape | Red triangle | Points in its current movement/lunge direction |
+| Shape | Vermilion-red triangle | Points in its current movement/lunge direction |
 | Health | 1 HP | Uses the same projectile and death behavior as circle enemies |
 | XP value | 2 XP | Drops one neon-orange pickup worth 2 XP on death |
 | Contact damage | 2 HP | Uses the shared 650 ms per-enemy contact debounce |
 | Base pursuit speed | 62, 76, or 90 px/s | Uses the existing repeating enemy speed sequence |
 | Lunge trigger | Player within 250 px | Requires the individual charger's lunge cooldown to be ready |
-| Lunge speed | 3× base speed | Locks the direction captured when the lunge begins |
+| Lunge speed | 4.5× base speed | 50% faster than the original 3× lunge; locks the direction captured when the lunge begins |
 | Lunge distance | 250 px | Returns to normal pursuit after charge-only travel reaches 250 px; ends early at an arena boundary |
 | Lunge cooldown | 10,000 ms | Begins when a lunge starts and pauses with gameplay |
 
@@ -289,3 +298,4 @@ Enemy spawn positions, in enemy order:
 - Added phone touch auto-aim and reload-gated auto-fire against the nearest enemy while retaining touch-tap movement; connecting a gamepad restores manual right-stick aiming.
 - Added a phone Fullscreen button using the browser Fullscreen API, with automatic hiding on unsupported browsers.
 - Added red triangle charger enemies: 2 contact damage, a 2-XP drop, a 250 px trigger radius, a direction-locked 250 px lunge at 3× base speed, and a 10-second lunge cooldown. One charger spawns at 0:30 and every 10 active seconds afterward through 2:50.
+- Added a reusable red-family enemy palette: circle pursuers remain crimson while Chargers use vermilion, with silhouette retained as the primary role cue. Increased Charger lunge speed by 50%, from 3× to 4.5× base speed, without changing its 250 px travel distance or 10-second cooldown.

@@ -38,7 +38,21 @@ const CHARGER_SPAWN_INTERVAL_MS = 10000;
 const CHARGER_LUNGE_COOLDOWN_MS = 10000;
 const CHARGER_LUNGE_TRIGGER_DISTANCE = 250;
 const CHARGER_LUNGE_DISTANCE = 250;
-const CHARGER_LUNGE_SPEED_MULTIPLIER = 3;
+const CHARGER_LUNGE_SPEED_MULTIPLIER = 4.5;
+const ENEMY_COLOR_SYSTEM = {
+  circle: {
+    name: "crimson",
+    body: 0xff334f,
+    outline: 0xff9bab,
+    glow: 0xff334f,
+  },
+  charger: {
+    name: "vermilion",
+    body: 0xff5a36,
+    outline: 0xffc0a3,
+    glow: 0xff3d25,
+  },
+};
 const SPAWN_RATE_STEP_MS = 20000;
 const ENEMY_SPAWN_RATES = [1, 2, 4, 6, 8, 10];
 const RARITY_WEIGHTS = {
@@ -1753,10 +1767,11 @@ class TitleScene extends Phaser.Scene {
     }
 
     for (const entity of this.entities.slice(1)) {
-      this.graphics.fillStyle(0xff334f, 0.1);
+      const palette = ENEMY_COLOR_SYSTEM[entity.enemyType] ?? ENEMY_COLOR_SYSTEM.circle;
+      this.graphics.fillStyle(palette.glow, 0.12);
       this.graphics.fillCircle(entity.x, entity.y, entity.radius + 7);
-      this.graphics.fillStyle(0xff334f, 0.95);
-      this.graphics.lineStyle(1, 0xff9bab, 0.8);
+      this.graphics.fillStyle(palette.body, 0.95);
+      this.graphics.lineStyle(1, palette.outline, 0.85);
       if (entity.enemyType === "charger") {
         const visualRadius = entity.radius + 2;
         const points = Array.from({ length: 3 }, (_, index) => {
@@ -2364,6 +2379,16 @@ window.render_game_to_text = () => {
           enemies: scene.entities.slice(1).map((enemy) => ({
             id: enemy.id,
             type: enemy.enemyType,
+            color: (() => {
+              const palette = ENEMY_COLOR_SYSTEM[enemy.enemyType] ?? ENEMY_COLOR_SYSTEM.circle;
+              const toHex = (value) => `#${value.toString(16).padStart(6, "0")}`;
+              return {
+                family: palette.name,
+                body: toHex(palette.body),
+                outline: toHex(palette.outline),
+                glow: toHex(palette.glow),
+              };
+            })(),
             x: roundCoordinate(enemy.x),
             y: roundCoordinate(enemy.y),
             radius: enemy.radius,
