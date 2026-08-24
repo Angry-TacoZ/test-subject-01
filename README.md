@@ -23,7 +23,7 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 - Increased Charger lunge speed by 50%, from 3× to 4.5× base speed.
 - The lunge still travels 250 px and retains its 10-second cooldown.
 
-_Full change and review history will be linked when the pull request is opened._
+[Full change and review history: PR #5](https://github.com/Angry-TacoZ/test-subject-01/pull/5)
 
 ### Charger Enemy Update — August 23, 2026
 
