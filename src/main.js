@@ -147,6 +147,12 @@ function axisDirection(value) {
   return 0;
 }
 
+function usesMobileTouchInterface() {
+  return navigator.maxTouchPoints > 0 &&
+    window.matchMedia("(pointer: coarse)").matches &&
+    Math.min(window.innerWidth, window.innerHeight) <= 600;
+}
+
 function getControllerControls() {
   if (state.mode === "options") {
     return [...optionsDialog.querySelectorAll('input[type="range"], button')];
@@ -469,10 +475,18 @@ class TitleScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
     const marginX = Phaser.Math.Clamp(width * 0.045, 22, 62);
-    const marginTop =
+    const baseMarginTop =
       width <= 600
         ? Phaser.Math.Clamp(height * 0.2, 160, 180)
         : Phaser.Math.Clamp(height * 0.18, 130, 160);
+    const shellRect = gameShell.getBoundingClientRect();
+    const hudRect = !levelHud.hidden ? levelHud.getBoundingClientRect() : null;
+    const measuredHudBottom = hudRect ? hudRect.bottom - shellRect.top + 12 : 0;
+    const marginTop = Phaser.Math.Clamp(
+      Math.max(baseMarginTop, measuredHudBottom),
+      baseMarginTop,
+      Math.max(baseMarginTop, height - 180),
+    );
     const marginBottom = Phaser.Math.Clamp(height * 0.055, 24, 56);
     return {
       x: marginX,
@@ -672,7 +686,9 @@ class TitleScene extends Phaser.Scene {
     if (this.aimSource === "mouse" && this.mouseAimTarget) {
       this.setAimToward(this.mouseAimTarget.x, this.mouseAimTarget.y, "mouse");
     }
-    this.tryFireElectroTherapy();
+    const mobileAutoFire = usesMobileTouchInterface() && !state.gamepadConnected;
+    const mobileAutoTarget = mobileAutoFire && this.updateMobileAutoAim();
+    if (!mobileAutoFire || mobileAutoTarget) this.tryFireElectroTherapy();
     const activePointer = this.input.activePointer;
     const mouseFireHeld = Boolean(
       activePointer?.isDown &&
@@ -680,7 +696,9 @@ class TitleScene extends Phaser.Scene {
       activePointer.event?.pointerType !== "touch" &&
       activePointer.leftButtonDown(),
     );
-    if (this.fireKey.isDown || mouseFireHeld || this.gamepadFireHeld) this.tryFire();
+    if (mobileAutoTarget || this.fireKey.isDown || mouseFireHeld || this.gamepadFireHeld) {
+      this.tryFire();
+    }
     this.updateWeaponHud();
     this.updateElectroHud();
     const horizontal =
@@ -806,6 +824,18 @@ class TitleScene extends Phaser.Scene {
     if (Math.hypot(dx, dy) < 0.001) return;
     this.setAimDirection(dx, dy, source);
     if (source === "mouse") this.mouseAimTarget = { x, y };
+  }
+
+  updateMobileAutoAim() {
+    const player = this.entities[0];
+    if (!player) return false;
+    const target = this.entities.slice(1).sort((first, second) =>
+      Math.hypot(first.x - player.x, first.y - player.y) -
+      Math.hypot(second.x - player.x, second.y - player.y)
+    )[0];
+    if (!target) return false;
+    this.setAimDirection(target.x - player.x, target.y - player.y, "mobile-auto");
+    return true;
   }
 
   setAimDirection(x, y, source) {
@@ -1738,6 +1768,7 @@ const gameOverDialog = document.querySelector("#game-over-dialog");
 const exitScreen = document.querySelector("#exit-screen");
 const levelHud = document.querySelector("#level-hud");
 const gameShell = document.querySelector("#game-shell");
+const mobileFullscreenButton = document.querySelector("#mobile-fullscreen-button");
 const menuMusic = document.querySelector("#menu-music");
 const levelMusic = document.querySelector("#level-music");
 const musicVolume = document.querySelector("#music-volume");
@@ -1753,6 +1784,32 @@ const weaponImpactPool = Array.from({ length: 8 }, () => weaponImpact.cloneNode(
 let contactZapPoolIndex = 0;
 let weaponShotPoolIndex = 0;
 let weaponImpactPoolIndex = 0;
+
+async function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    await document.exitFullscreen();
+    return;
+  }
+  if (!document.fullscreenEnabled || !gameShell.requestFullscreen) return;
+  await gameShell.requestFullscreen({ navigationUI: "hide" });
+}
+
+function syncFullscreenControl() {
+  const supported = Boolean(document.fullscreenEnabled && gameShell.requestFullscreen);
+  mobileFullscreenButton.hidden = !supported;
+  mobileFullscreenButton.textContent = document.fullscreenElement
+    ? "Exit Fullscreen"
+    : "Fullscreen";
+  requestAnimationFrame(() => game.scale.refresh());
+}
+
+mobileFullscreenButton.addEventListener("click", () => {
+  void toggleFullscreen().catch(() => {
+    mobileFullscreenButton.textContent = "Unavailable";
+  });
+});
+document.addEventListener("fullscreenchange", syncFullscreenControl);
+syncFullscreenControl();
 
 function updateTestingUpgradeButtons() {
   if (!testingUpgradeButtons) return;
@@ -2180,6 +2237,7 @@ window.render_game_to_text = () => {
           collisionPairsLastFrame: scene.collisionPairsLastFrame,
           moveTarget: scene.moveTarget,
           weapon: {
+            mobileAutoFire: usesMobileTouchInterface() && !state.gamepadConnected,
             aimActive: scene.aimActive,
             aimSource: scene.aimSource,
             aimDirection: {
@@ -2337,7 +2395,14 @@ window.render_game_to_text = () => {
     },
     visibleControls:
       state.mode === "level"
-        ? [
+        ? usesMobileTouchInterface() && !state.gamepadConnected
+          ? [
+              "Touch-tap destination movement",
+              "Automatic nearest-enemy aim and fire",
+              "Fullscreen",
+              "Options",
+            ]
+          : [
             "WASD",
             "Arrow keys",
             "Xbox left stick or D-pad",
@@ -2390,6 +2455,8 @@ if (import.meta.env.DEV) {
       if (!scene.levelActive) return false;
       scene.entities = scene.entities.slice(0, 1);
       scene.spawnAccumulator = 0;
+      scene.weaponReloadMs = 0;
+      scene.electroCooldownMs = 0;
       return true;
     },
   };
@@ -2404,10 +2471,6 @@ window.addEventListener("keydown", async (event) => {
   }
 
   if (event.key.toLowerCase() === "f") {
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-    } else {
-      await gameShell.requestFullscreen();
-    }
+    await toggleFullscreen();
   }
 });

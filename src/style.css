@@ -135,6 +135,14 @@ body {
   display: none;
 }
 
+.mobile-fullscreen-button {
+  display: none;
+}
+
+.mobile-fullscreen-button[hidden] {
+  display: none;
+}
+
 .level-controls button {
   min-height: 34px;
   border: 1px solid rgb(66 245 255 / 45%);
@@ -910,7 +918,7 @@ input[type="range"]:focus-visible {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 600px), (pointer: coarse) and (max-height: 600px) {
   .menu {
     left: 24px;
   }
@@ -987,15 +995,27 @@ input[type="range"]:focus-visible {
   }
 
   .level-controls {
+    display: grid;
     grid-column: 2;
     grid-row: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: flex-end;
+    width: 100%;
     gap: 8px;
   }
 
   .level-controls > span {
-    max-width: 16ch;
+    grid-column: 1 / -1;
+    max-width: none;
     text-align: right;
+  }
+
+  .level-controls button {
+    width: 100%;
+    padding-right: 5px;
+    padding-left: 5px;
+    font-size: 0.56rem;
+    letter-spacing: 0.08em;
   }
 
   .desktop-control-hint {
@@ -1004,6 +1024,17 @@ input[type="range"]:focus-visible {
 
   .mobile-control-hint {
     display: inline;
+  }
+
+  .mobile-fullscreen-button {
+    display: block;
+  }
+}
+
+@media (pointer: coarse) and (max-width: 430px) {
+  .level-controls {
+    grid-column: 1 / -1;
+    grid-row: 3;
   }
 }
 

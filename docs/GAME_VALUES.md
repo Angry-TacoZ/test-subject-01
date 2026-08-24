@@ -90,10 +90,12 @@ Enemy spawn positions, in enemy order:
 | Shotgun | Epic; one-time replacement | Replaces the standard single shot with 3 pellets at -12°, 0°, and +12° |
 | Shotgun range | 420 px | Each pellet despawns at this travel distance or an earlier enemy/arena endpoint |
 | Shotgun upgrade compatibility | Cycling Rate, Double Shot, Penetrating Shot | Double Shot repeats all 3 pellets; each pellet independently inherits penetration |
-| Aim methods | Mouse or Xbox right stick | Manual direction only; no auto aim |
+| Desktop/controller aim methods | Mouse or Xbox right stick | Manual direction only; no auto aim |
+| Mobile aim and fire | Automatic nearest enemy | Enabled on coarse-pointer phone-sized interfaces without a connected gamepad; touch remains dedicated to movement |
 | Mouse fire | Left click or Space | Uses current mouse aim direction |
 | Controller fire | Xbox right trigger | Hold to fire again whenever reload completes |
 | Reload HUD | Beneath player health | Shows aim requirement, ready state, or remaining reload time |
+| Mobile fullscreen | User-triggered Fullscreen button | Requests browser fullscreen with hidden navigation UI when supported; browser requires a tap gesture |
 
 ### Experience
 
@@ -142,6 +144,13 @@ Enemy spawn positions, in enemy order:
 | Common grants | Repeatable | Each press adds another rank for direct balance testing |
 | Rare/Epic grants | One-time | Double Shot, Penetrating Shot, Nanite Rehab, Electro Therapy, and Shotgun disable after being granted |
 | Input support | Mouse, touch, keyboard, Xbox controller | Uses semantic buttons and the existing Options focus navigation |
+
+### Responsive playfield
+
+| Value | Current setting | Notes |
+| --- | ---: | --- |
+| Arena top boundary | Measured HUD bottom + 12 px minimum gap | Prevents wrapped phone statistics and controls from overlapping the playfield |
+| Phone landscape layout | Coarse pointer and viewport height ≤600 px | Uses the same compact two-row HUD treatment as narrow portrait screens |
 
 ### Xbox controller
 
@@ -257,3 +266,6 @@ Enemy spawn positions, in enemy order:
 - Added Rare Nanite Rehab: it restores 1 missing HP every 2 seconds of active gameplay and pauses with the rest of the simulation.
 - Added Epic Shotgun as a standard-weapon replacement: 3 pellets at -12/0/+12 degrees with a 420 px range. Cycling Rate applies; Double Shot repeats the full blast; Penetrating Shot applies independently to every pellet.
 - Added a three-minute active-game survival timer and a green You Survived result with the same Try Again/Main Menu controls as Game Over.
+- Changed the arena's top boundary to reserve the HUD's measured rendered height, preventing the expanded stat panel from overlapping phone gameplay in landscape.
+- Added phone touch auto-aim and reload-gated auto-fire against the nearest enemy while retaining touch-tap movement; connecting a gamepad restores manual right-stick aiming.
+- Added a phone Fullscreen button using the browser Fullscreen API, with automatic hiding on unsupported browsers.

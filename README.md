@@ -10,6 +10,21 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 
 ## Patch notes
 
+### Mobile Interface Update — August 23, 2026
+
+#### Mobile gameplay
+
+- Phone touch mode now automatically aims at and fires on the nearest enemy, leaving touch input dedicated to movement.
+- Connecting a controller restores manual right-stick aim and trigger fire.
+- Added a Fullscreen button for supported mobile browsers.
+
+#### Interface
+
+- The playfield now reserves the HUD's actual rendered height, preventing wrapped statistics from covering the top of the arena.
+- Phone landscape layouts use the compact mobile HUD even when their width exceeds the portrait breakpoint.
+
+[Full change and review history: PR #2](https://github.com/Angry-TacoZ/test-subject-01/pull/2)
+
 ### Survival Protocol Update — August 23, 2026
 
 #### New upgrades
