@@ -154,6 +154,9 @@ function usesMobileTouchInterface() {
 }
 
 function getControllerControls() {
+  if (state.mode === "about") {
+    return [...aboutDialog.querySelectorAll("a, button")];
+  }
   if (state.mode === "options") {
     return [...optionsDialog.querySelectorAll('input[type="range"], button')];
   }
@@ -208,7 +211,10 @@ function activateControllerControl() {
     controls[0].focus();
     return;
   }
-  if (document.activeElement instanceof HTMLButtonElement) document.activeElement.click();
+  if (
+    document.activeElement instanceof HTMLButtonElement ||
+    document.activeElement instanceof HTMLAnchorElement
+  ) document.activeElement.click();
 }
 
 class TitleScene extends Phaser.Scene {
@@ -460,6 +466,7 @@ class TitleScene extends Phaser.Scene {
 
       if (justPressed(0)) activateControllerControl();
       if (justPressed(1) && state.mode === "options") optionsDialog.close();
+      if (justPressed(1) && state.mode === "about") aboutDialog.close();
       if (justPressed(1) && ["gameover", "survived"].includes(state.mode)) {
         document.querySelector("#main-menu-button").click();
       }
@@ -1761,6 +1768,7 @@ game.canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 const menu = document.querySelector(".menu");
 const statusElement = document.querySelector("#system-status");
 const optionsDialog = document.querySelector("#options-dialog");
+const aboutDialog = document.querySelector("#about-dialog");
 const testingUpgradeButtons = document.querySelector("#testing-upgrade-buttons");
 const levelUpDialog = document.querySelector("#level-up-dialog");
 const levelUpChoices = document.querySelector("#level-up-choices");
@@ -2116,6 +2124,21 @@ document.querySelector("#options-button").addEventListener("click", () => {
   openOptions("menu");
 });
 
+document.querySelector("#about-button").addEventListener("click", () => {
+  state.mode = "about";
+  aboutDialog.showModal();
+  requestAnimationFrame(focusFirstControllerControl);
+});
+
+document.querySelector("#close-about-button").addEventListener("click", () => {
+  aboutDialog.close();
+});
+
+aboutDialog.addEventListener("close", () => {
+  state.mode = "menu";
+  document.querySelector("#about-button").focus();
+});
+
 document.querySelector("#level-options-button").addEventListener("click", () => {
   openOptions("level");
 });
@@ -2421,7 +2444,9 @@ window.render_game_to_text = () => {
           ? ["Choose one upgrade", "D-pad or left-stick navigation", "A select"]
         : state.mode === "options"
           ? ["Menu music volume", "Sound effects volume", "D-pad navigation", "A select", "B return"]
-          : ["Start", "Options", "Exit", "D-pad navigation", "A select", "Menu button start"],
+        : state.mode === "about"
+          ? ["Portfolio", "LinkedIn", "Return", "D-pad navigation", "A select", "B return"]
+          : ["Start", "Options", "About", "Exit", "D-pad navigation", "A select", "Menu button start"],
   });
 };
 

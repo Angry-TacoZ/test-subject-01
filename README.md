@@ -10,6 +10,15 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 
 ## Patch notes
 
+### Creator Profile Update — August 23, 2026
+
+#### Main menu
+
+- Added an About section with creator credit for James Lane.
+- Added direct links to [jamesai.space](https://jamesai.space) and [LinkedIn](https://www.linkedin.com/in/james-lane-1051291a9).
+
+[Full change and review history: PR #3](https://github.com/Angry-TacoZ/test-subject-01/pull/3)
+
 ### Mobile Interface Update — August 23, 2026
 
 #### Mobile gameplay

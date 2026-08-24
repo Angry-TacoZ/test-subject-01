@@ -494,6 +494,68 @@ dialog::backdrop {
   text-align: center;
 }
 
+.about-frame h2 {
+  margin-bottom: 12px;
+}
+
+.about-name {
+  margin: 0 0 28px;
+  color: #dffcff;
+  font: 600 clamp(1rem, 3vw, 1.3rem) Consolas, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 0 16px rgb(66 245 255 / 35%);
+}
+
+.about-links {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  border-top: 1px solid rgb(66 245 255 / 30%);
+  padding-top: 18px;
+}
+
+.about-links a {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgb(66 245 255 / 45%);
+  padding: 14px 16px;
+  color: #dffcff;
+  font-family: Consolas, monospace;
+  text-decoration: none;
+  transition: color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.about-links a span {
+  color: #42f5ff;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.about-links a strong {
+  overflow-wrap: anywhere;
+  font-size: 0.76rem;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+
+.about-links a:hover {
+  color: #02070b;
+  background: #42f5ff;
+  box-shadow: 0 0 24px rgb(66 245 255 / 24%);
+}
+
+.about-links a:hover span {
+  color: #02070b;
+}
+
+.about-links a:focus-visible {
+  outline: 2px solid #ff2bd6;
+  outline-offset: 2px;
+  box-shadow: 0 0 22px rgb(255 43 214 / 28%);
+}
+
 .game-over-dialog {
   border-color: #ff5369;
   box-shadow:
