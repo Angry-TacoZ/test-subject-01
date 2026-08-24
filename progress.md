@@ -113,6 +113,7 @@ One title, one short system message, and three primary actions. No gameplay or p
 - External AI review found that mobile auto-fire could reuse its last aim vector during a gap with no enemies. Changed the fire gate to require a current nearest-enemy target and added a regression sequence that verifies silence in an empty arena followed by automatic resumption when the next enemy spawns.
 - Follow-up external AI review found Electro Therapy used a separate unconditional firing path and could still reuse the stale mobile aim vector. Applied the same current-target gate to Electro Therapy while leaving desktop/controller behavior unchanged, and extended the empty-arena regression to cover both weapons.
 - On `codex/about-menu`, added an About action between Options and Exit with creator credit for James Lane plus external portfolio and LinkedIn links, using a semantic modal and controller-aware focus navigation.
+- On `codex/charger-enemy`, added a red triangle charger with 1 HP, 2 contact damage, normal pursuit, and a direction-locked 250 px lunge at 3× base speed when the player is within 250 px. Each charger has a 10-second lunge cooldown; one spawns at 0:30 and every 10 active seconds through 2:50.
 
 ## Next
 

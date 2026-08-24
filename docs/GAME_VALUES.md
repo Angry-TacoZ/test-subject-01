@@ -18,7 +18,7 @@ This is the human-readable record of accepted gameplay and system values. Update
 | Value | Current setting | Notes |
 | --- | ---: | --- |
 | Base maximum health | 100 HP | Starts at maximum health; Vital Capacity adds 20 per rank |
-| Current starting health | 100 HP | Each registered enemy contact removes 1 HP |
+| Current starting health | 100 HP | Each registered contact removes the colliding enemy type's damage value |
 | Circle radius | 20 px | Collision radius and rendered body radius |
 | Character color | Grey | Grey core, pale outline, and neutral glow distinguish the player from rarity colors |
 | Base movement speed | 230 px/s | Same maximum for keyboard, controller, and destination movement |
@@ -30,25 +30,41 @@ This is the human-readable record of accepted gameplay and system values. Update
 
 | Value | Current setting | Notes |
 | --- | ---: | --- |
-| Initial count | 8 | All continuously pursue the player |
+| Initial count | 8 circle enemies | All continuously pursue the player; chargers begin later |
 | Maximum health | 1 HP each | Starts at maximum health |
 | Current starting health | 1 HP each | One weapon hit removes an enemy |
-| Circle radius | 11 px | Collision radius and rendered body radius |
+| Enemy collision radius | 11 px | Shared by circle and triangle enemies |
 | Pursuit speeds | 62, 76, 90 px/s | Repeats by enemy index: 62, 76, 90, 62, 76, 90, 62, 76 |
 | Steering response | 5.2 / second | Exponential steering blend toward the player |
 | Ram hit cooldown | 650 ms per enemy | Prevents a sustained overlap counting every frame |
 | Spawn positions | See list below | Fractions of playable-arena width and height |
 
+#### Charger triangle
+
+| Value | Current setting | Notes |
+| --- | ---: | --- |
+| Shape | Red triangle | Points in its current movement/lunge direction |
+| Health | 1 HP | Uses the same projectile, death, and XP-drop behavior as circle enemies |
+| Contact damage | 2 HP | Uses the shared 650 ms per-enemy contact debounce |
+| Base pursuit speed | 62, 76, or 90 px/s | Uses the existing repeating enemy speed sequence |
+| Lunge trigger | Player within 250 px | Requires the individual charger's lunge cooldown to be ready |
+| Lunge speed | 3× base speed | Locks the direction captured when the lunge begins |
+| Lunge distance | 250 px | Returns to normal pursuit after charge-only travel reaches 250 px; ends early at an arena boundary |
+| Lunge cooldown | 10,000 ms | Begins when a lunge starts and pauses with gameplay |
+
 ### Enemy spawning
 
 | Value | Current setting | Notes |
 | --- | ---: | --- |
-| Spawn-rate sequence | 1, 2, 4, 6, 8, 10 enemies/s | Corrected sequence; not exponential doubling after 4 |
+| Circle spawn-rate sequence | 1, 2, 4, 6, 8, 10 enemies/s | Corrected sequence; not exponential doubling after 4 |
 | Rate interval | 20,000 ms | Advances once per twenty seconds of active gameplay |
 | Maximum rate | 10 enemies/s | Reached after 100 seconds and then held |
 | Spawn locations | 18-point arena perimeter cycle | Positions are inset by the 11 px enemy radius |
 | Spawn clock during Options | Paused | No elapsed time or spawn budget accumulates |
 | Active-enemy cap | None | Active population can continue growing |
+| First charger spawn | 30,000 ms | One triangle enemy enters when active match time reaches 0:30 |
+| Charger spawn interval | 10,000 ms | One additional charger at 0:40, 0:50, and so on through 2:50 |
+| Chargers per complete run | 15 | No charger is added at the exact 3:00 survival boundary |
 
 Enemy spawn positions, in enemy order:
 
@@ -67,7 +83,8 @@ Enemy spawn positions, in enemy order:
 | --- | ---: | --- |
 | Dot-to-dot collision | Enabled | Player and enemies cannot pass through one another |
 | Arena-boundary collision | Enabled | Every dot remains inside the playfield |
-| Ram result | -1 player HP and increment HITS | Applied once per enemy's debounced contact |
+| Circle ram result | -1 player HP and increment HITS | Applied once per circle enemy's debounced contact |
+| Charger ram result | -2 player HP and increment HITS | Applied once per triangle enemy's debounced contact |
 | Ram impact flash | 180 ms | Red impact-ring feedback |
 | Player health HUD | Top center | Displays numeric HP and a neon progress bar |
 | Death threshold | 0 HP | Pauses gameplay and opens Game Over |
@@ -269,3 +286,4 @@ Enemy spawn positions, in enemy order:
 - Changed the arena's top boundary to reserve the HUD's measured rendered height, preventing the expanded stat panel from overlapping phone gameplay in landscape.
 - Added phone touch auto-aim and reload-gated auto-fire against the nearest enemy while retaining touch-tap movement; connecting a gamepad restores manual right-stick aiming.
 - Added a phone Fullscreen button using the browser Fullscreen API, with automatic hiding on unsupported browsers.
+- Added red triangle charger enemies: 2 contact damage, a 250 px trigger radius, a direction-locked 250 px lunge at 3× base speed, and a 10-second lunge cooldown. One charger spawns at 0:30 and every 10 active seconds afterward through 2:50.
