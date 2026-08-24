@@ -19,7 +19,7 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 - Knockback resolves before damage, causing defeated enemies to leave their XP pickup at the pushed position.
 - Electro Therapy remains unchanged because its electrical arcs do not carry projectile mass.
 
-_Full change and review history will be linked when the pull request is opened._
+[Full change and review history: PR #6](https://github.com/Angry-TacoZ/test-subject-01/pull/6)
 
 ### Enemy Readability Update — August 24, 2026
 
