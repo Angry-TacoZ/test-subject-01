@@ -30,6 +30,15 @@ const BASE_MAGNETISM_DISTANCE = 10;
 const MAGNETISM_UPGRADE_STEP = 10;
 const XP_MAGNET_PULL_SPEED = 240;
 const ENEMY_CONTACT_DAMAGE = 1;
+const ENEMY_XP_VALUE = 1;
+const CHARGER_CONTACT_DAMAGE = 2;
+const CHARGER_XP_VALUE = 2;
+const CHARGER_FIRST_SPAWN_MS = 30000;
+const CHARGER_SPAWN_INTERVAL_MS = 10000;
+const CHARGER_LUNGE_COOLDOWN_MS = 10000;
+const CHARGER_LUNGE_TRIGGER_DISTANCE = 250;
+const CHARGER_LUNGE_DISTANCE = 250;
+const CHARGER_LUNGE_SPEED_MULTIPLIER = 3;
 const SPAWN_RATE_STEP_MS = 20000;
 const ENEMY_SPAWN_RATES = [1, 2, 4, 6, 8, 10];
 const RARITY_WEIGHTS = {
@@ -270,6 +279,9 @@ class TitleScene extends Phaser.Scene {
     this.spawnRatePerSecond = 1;
     this.spawnPointIndex = 0;
     this.enemiesSpawnedBySystem = 0;
+    this.chargerSpawnPointIndex = 0;
+    this.chargersSpawnedBySystem = 0;
+    this.nextChargerSpawnMs = CHARGER_FIRST_SPAWN_MS;
     this.hitCounterElement = document.querySelector("#hit-counter");
     this.survivalTimerElement = document.querySelector("#survival-timer");
     this.healthBarElement = document.querySelector("#player-health");
@@ -546,6 +558,9 @@ class TitleScene extends Phaser.Scene {
     this.spawnRatePerSecond = 1;
     this.spawnPointIndex = 0;
     this.enemiesSpawnedBySystem = 0;
+    this.chargerSpawnPointIndex = 0;
+    this.chargersSpawnedBySystem = 0;
+    this.nextChargerSpawnMs = CHARGER_FIRST_SPAWN_MS;
     this.updateHitCounter();
     this.updateSurvivalTimerHud();
     const arena = this.getArenaBounds();
@@ -587,7 +602,12 @@ class TitleScene extends Phaser.Scene {
     this.draw();
   }
 
-  createEnemyAtNormalizedPosition(normalizedX, normalizedY, spawnedBySystem = false) {
+  createEnemyAtNormalizedPosition(
+    normalizedX,
+    normalizedY,
+    spawnedBySystem = false,
+    enemyType = "circle",
+  ) {
     const arena = this.getArenaBounds();
     const player = this.entities[0];
     const radius = 11;
@@ -607,6 +627,7 @@ class TitleScene extends Phaser.Scene {
     this.entities.push({
       id: `enemy-${this.nextEnemyId}`,
       kind: "enemy",
+      enemyType,
       x,
       y,
       radius,
@@ -617,9 +638,19 @@ class TitleScene extends Phaser.Scene {
       speed,
       angle,
       hitCooldownMs: 0,
+      contactDamage: enemyType === "charger" ? CHARGER_CONTACT_DAMAGE : ENEMY_CONTACT_DAMAGE,
+      xpValue: enemyType === "charger" ? CHARGER_XP_VALUE : ENEMY_XP_VALUE,
+      lungeActive: false,
+      lungeCooldownMs: 0,
+      lungeRemainingDistance: 0,
+      lungeDistanceTraveled: 0,
+      lungeDirection: null,
     });
     this.nextEnemyId += 1;
-    if (spawnedBySystem) this.enemiesSpawnedBySystem += 1;
+    if (spawnedBySystem) {
+      this.enemiesSpawnedBySystem += 1;
+      if (enemyType === "charger") this.chargersSpawnedBySystem += 1;
+    }
   }
 
   updateEnemySpawning(deltaMs) {
@@ -635,6 +666,15 @@ class TitleScene extends Phaser.Scene {
       this.spawnPointIndex = (this.spawnPointIndex + 1) % ENEMY_SPAWN_POINTS.length;
       this.createEnemyAtNormalizedPosition(x, y, true);
       this.spawnAccumulator -= 1;
+    }
+    while (
+      this.nextChargerSpawnMs < SURVIVAL_DURATION_MS &&
+      this.spawnElapsedMs >= this.nextChargerSpawnMs
+    ) {
+      const [x, y] = ENEMY_SPAWN_POINTS[this.chargerSpawnPointIndex];
+      this.chargerSpawnPointIndex = (this.chargerSpawnPointIndex + 1) % ENEMY_SPAWN_POINTS.length;
+      this.createEnemyAtNormalizedPosition(x, y, true, "charger");
+      this.nextChargerSpawnMs += CHARGER_SPAWN_INTERVAL_MS;
     }
   }
 
@@ -674,6 +714,9 @@ class TitleScene extends Phaser.Scene {
     this.spawnElapsedMs = 0;
     this.spawnAccumulator = 0;
     this.enemiesSpawnedBySystem = 0;
+    this.chargerSpawnPointIndex = 0;
+    this.chargersSpawnedBySystem = 0;
+    this.nextChargerSpawnMs = CHARGER_FIRST_SPAWN_MS;
     this.draw();
   }
 
@@ -747,9 +790,33 @@ class TitleScene extends Phaser.Scene {
 
     for (const enemy of this.entities.slice(1)) {
       enemy.hitCooldownMs = Math.max(0, enemy.hitCooldownMs - deltaMs);
+      enemy.lungeCooldownMs = Math.max(0, enemy.lungeCooldownMs - deltaMs);
       const dx = player.x - enemy.x;
       const dy = player.y - enemy.y;
       const distance = Math.max(0.001, Math.hypot(dx, dy));
+      if (enemy.enemyType === "charger" && enemy.lungeActive) {
+        const maximumLungeSpeed = enemy.speed * CHARGER_LUNGE_SPEED_MULTIPLIER;
+        const lungeSpeed = Math.min(maximumLungeSpeed, enemy.lungeRemainingDistance / deltaSeconds);
+        enemy.vx = enemy.lungeDirection.x * lungeSpeed;
+        enemy.vy = enemy.lungeDirection.y * lungeSpeed;
+        enemy.angle = Math.atan2(enemy.vy, enemy.vx);
+        continue;
+      }
+      if (
+        enemy.enemyType === "charger" &&
+        enemy.lungeCooldownMs <= 0 &&
+        distance <= CHARGER_LUNGE_TRIGGER_DISTANCE
+      ) {
+        enemy.lungeActive = true;
+        enemy.lungeCooldownMs = CHARGER_LUNGE_COOLDOWN_MS;
+        enemy.lungeRemainingDistance = CHARGER_LUNGE_DISTANCE;
+        enemy.lungeDistanceTraveled = 0;
+        enemy.lungeDirection = { x: dx / distance, y: dy / distance };
+        enemy.vx = enemy.lungeDirection.x * enemy.speed * CHARGER_LUNGE_SPEED_MULTIPLIER;
+        enemy.vy = enemy.lungeDirection.y * enemy.speed * CHARGER_LUNGE_SPEED_MULTIPLIER;
+        enemy.angle = Math.atan2(enemy.vy, enemy.vx);
+        continue;
+      }
       const desiredVelocityX = (dx / distance) * enemy.speed;
       const desiredVelocityY = (dy / distance) * enemy.speed;
       const steeringBlend = 1 - Math.exp(-5.2 * deltaSeconds);
@@ -759,9 +826,25 @@ class TitleScene extends Phaser.Scene {
     }
 
     for (const entity of this.entities) {
+      const previousX = entity.x;
+      const previousY = entity.y;
       entity.x += entity.vx * deltaSeconds;
       entity.y += entity.vy * deltaSeconds;
-      this.resolveArenaBoundary(entity);
+      const hitArenaBoundary = this.resolveArenaBoundary(entity);
+      if (entity.enemyType === "charger" && entity.lungeActive) {
+        const lungeStepDistance = Math.hypot(entity.x - previousX, entity.y - previousY);
+        entity.lungeDistanceTraveled += lungeStepDistance;
+        entity.lungeRemainingDistance = Math.max(
+          0,
+          entity.lungeRemainingDistance - lungeStepDistance,
+        );
+        if (entity.lungeRemainingDistance <= 0.01 || hitArenaBoundary) {
+          entity.lungeActive = false;
+          entity.lungeRemainingDistance = 0;
+          entity.vx = entity.lungeDirection.x * entity.speed;
+          entity.vy = entity.lungeDirection.y * entity.speed;
+        }
+      }
     }
 
     this.collisionPairsLastFrame = 0;
@@ -1129,7 +1212,7 @@ class TitleScene extends Phaser.Scene {
       x: enemy.x,
       y: enemy.y,
       radius: XP_DROP_RADIUS,
-      value: 1,
+      value: enemy.xpValue,
     });
     this.nextXpDropId += 1;
     this.entities = this.entities.filter((entity) => entity !== enemy);
@@ -1383,7 +1466,9 @@ class TitleScene extends Phaser.Scene {
     const minY = arena.y + entity.radius;
     const maxY = arena.y + arena.height - entity.radius;
 
+    let hitBoundary = false;
     if (entity.x < minX || entity.x > maxX) {
+      hitBoundary = true;
       entity.x = Phaser.Math.Clamp(entity.x, minX, maxX);
       if (entity.kind === "enemy") {
         entity.vx *= -1;
@@ -1393,6 +1478,7 @@ class TitleScene extends Phaser.Scene {
       }
     }
     if (entity.y < minY || entity.y > maxY) {
+      hitBoundary = true;
       entity.y = Phaser.Math.Clamp(entity.y, minY, maxY);
       if (entity.kind === "enemy") {
         entity.vy *= -1;
@@ -1401,6 +1487,7 @@ class TitleScene extends Phaser.Scene {
         entity.vy = 0;
       }
     }
+    return hitBoundary;
   }
 
   resolveEntityCollision(first, second) {
@@ -1417,7 +1504,7 @@ class TitleScene extends Phaser.Scene {
       this.impactFlashMs = 180;
       enemy.hitCooldownMs = 650;
       const player = first.kind === "player" ? first : second;
-      player.health = Math.max(0, player.health - ENEMY_CONTACT_DAMAGE);
+      player.health = Math.max(0, player.health - enemy.contactDamage);
       this.updateHitCounter();
       this.updateHealthHud();
       playContactSfx();
@@ -1458,6 +1545,12 @@ class TitleScene extends Phaser.Scene {
   }
 
   normalizeEnemyVelocity(enemy) {
+    if (enemy.enemyType === "charger" && enemy.lungeActive) {
+      enemy.vx = enemy.lungeDirection.x * enemy.speed * CHARGER_LUNGE_SPEED_MULTIPLIER;
+      enemy.vy = enemy.lungeDirection.y * enemy.speed * CHARGER_LUNGE_SPEED_MULTIPLIER;
+      enemy.angle = Math.atan2(enemy.vy, enemy.vx);
+      return;
+    }
     const currentSpeed = Math.hypot(enemy.vx, enemy.vy);
     if (currentSpeed < 0.001) {
       enemy.vx = Math.cos(enemy.angle) * enemy.speed;
@@ -1663,9 +1756,30 @@ class TitleScene extends Phaser.Scene {
       this.graphics.fillStyle(0xff334f, 0.1);
       this.graphics.fillCircle(entity.x, entity.y, entity.radius + 7);
       this.graphics.fillStyle(0xff334f, 0.95);
-      this.graphics.fillCircle(entity.x, entity.y, entity.radius);
       this.graphics.lineStyle(1, 0xff9bab, 0.8);
-      this.graphics.strokeCircle(entity.x, entity.y, entity.radius);
+      if (entity.enemyType === "charger") {
+        const visualRadius = entity.radius + 2;
+        const points = Array.from({ length: 3 }, (_, index) => {
+          const angle = entity.angle + (index * Math.PI * 2) / 3;
+          return {
+            x: entity.x + Math.cos(angle) * visualRadius,
+            y: entity.y + Math.sin(angle) * visualRadius,
+          };
+        });
+        this.graphics.fillTriangle(
+          points[0].x, points[0].y,
+          points[1].x, points[1].y,
+          points[2].x, points[2].y,
+        );
+        this.graphics.strokeTriangle(
+          points[0].x, points[0].y,
+          points[1].x, points[1].y,
+          points[2].x, points[2].y,
+        );
+      } else {
+        this.graphics.fillCircle(entity.x, entity.y, entity.radius);
+        this.graphics.strokeCircle(entity.x, entity.y, entity.radius);
+      }
     }
 
     const player = this.entities[0];
@@ -2219,6 +2333,7 @@ window.render_game_to_text = () => {
           choosingUpgrade: state.mode === "levelup",
           hits: scene.hits,
           contactDamage: ENEMY_CONTACT_DAMAGE,
+          chargerContactDamage: CHARGER_CONTACT_DAMAGE,
           impactFlashMs: roundCoordinate(scene.impactFlashMs),
           survival: {
             durationMs: SURVIVAL_DURATION_MS,
@@ -2248,14 +2363,35 @@ window.render_game_to_text = () => {
             : null,
           enemies: scene.entities.slice(1).map((enemy) => ({
             id: enemy.id,
+            type: enemy.enemyType,
             x: roundCoordinate(enemy.x),
             y: roundCoordinate(enemy.y),
             radius: enemy.radius,
             health: enemy.health,
             maxHealth: enemy.maxHealth,
+            baseSpeed: enemy.speed,
             vx: roundCoordinate(enemy.vx),
             vy: roundCoordinate(enemy.vy),
             hitCooldownMs: roundCoordinate(enemy.hitCooldownMs),
+            contactDamage: enemy.contactDamage,
+            xpValue: enemy.xpValue,
+            lunge: enemy.enemyType === "charger"
+              ? {
+                  active: enemy.lungeActive,
+                  cooldownMs: roundCoordinate(enemy.lungeCooldownMs),
+                  triggerDistance: CHARGER_LUNGE_TRIGGER_DISTANCE,
+                  maximumDistance: CHARGER_LUNGE_DISTANCE,
+                  distanceTraveled: roundCoordinate(enemy.lungeDistanceTraveled),
+                  remainingDistance: roundCoordinate(enemy.lungeRemainingDistance),
+                  speedMultiplier: CHARGER_LUNGE_SPEED_MULTIPLIER,
+                  direction: enemy.lungeDirection
+                    ? {
+                        x: roundCoordinate(enemy.lungeDirection.x),
+                        y: roundCoordinate(enemy.lungeDirection.y),
+                      }
+                    : null,
+                }
+              : null,
           })),
           collisionPairsLastFrame: scene.collisionPairsLastFrame,
           moveTarget: scene.moveTarget,
@@ -2378,6 +2514,13 @@ window.render_game_to_text = () => {
             ratePerSecond: scene.spawnRatePerSecond,
             rateStepMs: SPAWN_RATE_STEP_MS,
             rateSequence: ENEMY_SPAWN_RATES,
+            charger: {
+              firstSpawnMs: CHARGER_FIRST_SPAWN_MS,
+              intervalMs: CHARGER_SPAWN_INTERVAL_MS,
+              nextSpawnMs: scene.nextChargerSpawnMs,
+              spawnedBySystem: scene.chargersSpawnedBySystem,
+              active: scene.entities.filter((enemy) => enemy.enemyType === "charger").length,
+            },
             spawnedBySystem: scene.enemiesSpawnedBySystem,
             activeEnemies: Math.max(0, scene.entities.length - 1),
           },
@@ -2473,6 +2616,47 @@ if (import.meta.env.DEV) {
       if (!scene.levelActive) return false;
       scene.survivalElapsedMs = Phaser.Math.Clamp(elapsedMs, 0, SURVIVAL_DURATION_MS);
       scene.updateSurvivalTimerHud();
+      return true;
+    },
+    setSpawnElapsedMs(elapsedMs) {
+      const scene = game.scene.getScene("title");
+      if (!scene.levelActive) return false;
+      scene.spawnElapsedMs = Phaser.Math.Clamp(elapsedMs, 0, SURVIVAL_DURATION_MS);
+      scene.nextChargerSpawnMs = Math.max(
+        CHARGER_FIRST_SPAWN_MS,
+        CHARGER_FIRST_SPAWN_MS +
+          Math.ceil(Math.max(0, scene.spawnElapsedMs - CHARGER_FIRST_SPAWN_MS) / CHARGER_SPAWN_INTERVAL_MS) *
+            CHARGER_SPAWN_INTERVAL_MS,
+      );
+      return true;
+    },
+    spawnChargerNearPlayer(distance = 200) {
+      const scene = game.scene.getScene("title");
+      const player = scene.entities[0];
+      if (!scene.levelActive || !player) return null;
+      scene.createEnemyAtNormalizedPosition(0.5, 0.5, false, "charger");
+      const charger = scene.entities.at(-1);
+      const arena = scene.getArenaBounds();
+      charger.x = Phaser.Math.Clamp(
+        player.x + distance,
+        arena.x + charger.radius,
+        arena.x + arena.width - charger.radius,
+      );
+      charger.y = player.y;
+      charger.vx = -charger.speed;
+      charger.vy = 0;
+      charger.angle = Math.PI;
+      return charger.id;
+    },
+    setPlayerPosition(x, y) {
+      const scene = game.scene.getScene("title");
+      const player = scene.entities[0];
+      if (!scene.levelActive || !player) return false;
+      const arena = scene.getArenaBounds();
+      player.x = Phaser.Math.Clamp(x, arena.x + player.radius, arena.x + arena.width - player.radius);
+      player.y = Phaser.Math.Clamp(y, arena.y + player.radius, arena.y + arena.height - player.radius);
+      player.vx = 0;
+      player.vy = 0;
       return true;
     },
     clearEnemies() {

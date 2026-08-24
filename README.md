@@ -10,6 +10,17 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 
 ## Patch notes
 
+### Charger Enemy Update — August 23, 2026
+
+#### New enemy
+
+- Added red triangle Chargers that deal 2 contact damage.
+- Chargers drop pickups worth 2 XP when destroyed.
+- Chargers lunge toward nearby players at triple speed for 250 px, then wait 10 seconds before they can charge again.
+- The first Charger arrives at 0:30, followed by one every 10 seconds through the end of the active run.
+
+[Full change and review history: PR #4](https://github.com/Angry-TacoZ/test-subject-01/pull/4)
+
 ### Creator Profile Update — August 23, 2026
 
 #### Main menu
