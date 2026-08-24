@@ -687,7 +687,7 @@ class TitleScene extends Phaser.Scene {
       this.setAimToward(this.mouseAimTarget.x, this.mouseAimTarget.y, "mouse");
     }
     const mobileAutoFire = usesMobileTouchInterface() && !state.gamepadConnected;
-    if (mobileAutoFire) this.updateMobileAutoAim();
+    const mobileAutoTarget = mobileAutoFire && this.updateMobileAutoAim();
     this.tryFireElectroTherapy();
     const activePointer = this.input.activePointer;
     const mouseFireHeld = Boolean(
@@ -696,7 +696,7 @@ class TitleScene extends Phaser.Scene {
       activePointer.event?.pointerType !== "touch" &&
       activePointer.leftButtonDown(),
     );
-    if (mobileAutoFire || this.fireKey.isDown || mouseFireHeld || this.gamepadFireHeld) {
+    if (mobileAutoTarget || this.fireKey.isDown || mouseFireHeld || this.gamepadFireHeld) {
       this.tryFire();
     }
     this.updateWeaponHud();
@@ -2455,6 +2455,7 @@ if (import.meta.env.DEV) {
       if (!scene.levelActive) return false;
       scene.entities = scene.entities.slice(0, 1);
       scene.spawnAccumulator = 0;
+      scene.weaponReloadMs = 0;
       return true;
     },
   };

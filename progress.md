@@ -110,6 +110,7 @@ One title, one short system message, and three primary actions. No gameplay or p
 - External AI review requested a Nanite Rehab timing correction. Reproduced the 1.984s-full-health carryover causing a heal 34ms after damage, then changed regeneration to accumulate only while injured and clear its remainder whenever the player is full.
 - On `codex/mobile-hud-autofire-fullscreen`, changed the arena to reserve the HUD's measured height, added phone-sized coarse-pointer auto-aim/auto-fire while preserving touch movement, and added a supported-browser Fullscreen control. Targeted 706×527 DPR2 mobile verification measured a 12 px HUD/arena gap, acquired the nearest enemy, fired automatically, moved through touch, and entered/exited fullscreen without browser errors.
 - Verified the final 390×844 portrait layout keeps Fullscreen and Options fully inside the viewport and moves the complete HUD above the arena with a 12 px gap. Desktop gameplay, Xbox input, game-over/retry, production build, predeploy secret scan, and the canonical verifier passed; the verifier required UTF-8 console mode on Windows after its first output-rendering attempt encountered a CP1252 checkmark error.
+- External AI review found that mobile auto-fire could reuse its last aim vector during a gap with no enemies. Changed the fire gate to require a current nearest-enemy target and added a regression sequence that verifies silence in an empty arena followed by automatic resumption when the next enemy spawns.
 
 ## Next
 
