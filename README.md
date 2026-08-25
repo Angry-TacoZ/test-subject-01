@@ -23,7 +23,7 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 - Critical rolls apply to standard bullets, Shotgun pellets, Penetrating Shot hits, Double Shot follow-ups, and both Electro Therapy targets.
 - Added **Fault Amplifier — Common**, increasing critical chance by 5 percentage points per rank.
 
-_Full change and review history will be linked when the pull request is opened._
+[Full change and review history: PR #7](https://github.com/Angry-TacoZ/test-subject-01/pull/7)
 
 ### Projectile Impact Update — August 24, 2026
 
