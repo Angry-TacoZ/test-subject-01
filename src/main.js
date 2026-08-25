@@ -402,7 +402,11 @@ class TitleScene extends Phaser.Scene {
       };
     });
     this.scale.on("resize", () => {
-      if (this.levelActive) this.clampAllEntitiesToArena();
+      if (this.levelActive) {
+        this.remapDamageNumbersToArena(this.lastArenaBounds, this.getArenaBounds());
+        this.clampAllEntitiesToArena();
+        this.lastArenaBounds = this.getArenaBounds();
+      }
       this.draw();
     });
     this.draw();
@@ -609,6 +613,7 @@ class TitleScene extends Phaser.Scene {
     this.updateHitCounter();
     this.updateSurvivalTimerHud();
     const arena = this.getArenaBounds();
+    this.lastArenaBounds = arena;
     const point = (x, y) => ({
       x: arena.x + arena.width * x,
       y: arena.y + arena.height * y,
@@ -1448,6 +1453,18 @@ class TitleScene extends Phaser.Scene {
       survivors.push(number);
     }
     this.damageNumbers = survivors;
+  }
+
+  remapDamageNumbersToArena(previousArena, nextArena) {
+    if (!previousArena || !nextArena || previousArena.width <= 0 || previousArena.height <= 0) return;
+    for (const number of this.damageNumbers) {
+      const normalizedX = (number.x - previousArena.x) / previousArena.width;
+      const normalizedY = (number.y - previousArena.y) / previousArena.height;
+      number.x = nextArena.x + normalizedX * nextArena.width;
+      number.y = nextArena.y + normalizedY * nextArena.height;
+      number.element.style.left = `${number.x}px`;
+      number.element.style.top = `${number.y}px`;
+    }
   }
 
   clearDamageNumbers() {
