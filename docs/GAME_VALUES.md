@@ -96,6 +96,10 @@ Enemy spawn positions, in enemy order:
 | Circle ram result | -1 player HP and increment HITS | Applied once per circle enemy's debounced contact |
 | Charger ram result | -2 player HP and increment HITS | Applied once per triangle enemy's debounced contact |
 | Ram impact flash | 180 ms | Red impact-ring feedback |
+| Damage dealt to enemies | White floating number | Gold `CRIT` number at a larger size for critical hits |
+| Damage received by player | Vivid pink floating number | Positioned below-left of the player to remain separate from outgoing damage |
+| Damage-number lifetime | 650 ms active gameplay | Floats upward, fades, and freezes with all other gameplay during pauses |
+| Active damage-number cap | 64 | Oldest label is recycled first during unusually dense combat |
 | Player health HUD | Top center | Displays numeric HP and a neon progress bar |
 | Death threshold | 0 HP | Pauses gameplay and opens Game Over |
 | Survival duration | 180,000 ms (3:00) | Counts active gameplay only; Options and level-up choices pause the timer |
@@ -116,6 +120,8 @@ Enemy spawn positions, in enemy order:
 | Projectile knockback | 8 px per hit | Standard bullets and shotgun pellets shove the target in their travel direction before damage resolves; arena boundaries clamp the displacement |
 | Knockback impact cue | 120 ms | A short pale-red displacement streak and expanding ring make the shove visible even when a 1-HP enemy dies immediately |
 | Projectile endpoint | Enemy impact or arena-edge contact | No time-based expiration |
+| Base critical chance | 5% per damage instance | Applies independently to physical projectiles, shotgun pellets, Electro Therapy impacts, and Electro Therapy chain hits |
+| Critical damage | 2× base damage | Standard hit 1→2; Electro Therapy hit 2→4 |
 | Shotgun | Epic; one-time replacement | Replaces the standard single shot with 3 pellets at -12°, 0°, and +12° |
 | Shotgun range | 420 px | Each pellet despawns at this travel distance or an earlier enemy/arena endpoint |
 | Shotgun upgrade compatibility | Cycling Rate, Double Shot, Penetrating Shot | Double Shot repeats all 3 pellets; each pellet independently inherits penetration |
@@ -146,12 +152,13 @@ Enemy spawn positions, in enemy order:
 | Common rarity | Green; weight 1.00 per upgrade | Baseline selection weight |
 | Rare rarity | Blue; weight 0.20 per upgrade | Each Rare is selected at 0.2× the rate of each Common |
 | Epic rarity | Purple; weight 0.04 per upgrade | Each Epic is selected at 0.2× the rate of each Rare |
-| Current Rare offer chance | About 27.0% for any Rare | Two weighted draws without replacement from four Commons, three 0.20-weight Rares, and two 0.04-weight Epics until owned |
-| Current Epic offer chance | About 3.8% for either Epic | Two weighted draws without replacement from the current four Commons, three Rares, and two Epics until owned |
+| Current Rare offer chance | About 22.0% for any Rare | Two weighted draws without replacement from five Commons, three 0.20-weight Rares, and two 0.04-weight Epics until owned |
+| Current Epic offer chance | About 3.1% for either Epic | Two weighted draws without replacement from the current five Commons, three Rares, and two Epics until owned |
 | Vital Capacity | +20 maximum and current HP | Cumulative for the active run |
 | Motor Response | +10% base movement speed | Cumulative for the active run |
 | Cycling Rate | +10% reload rate | Cumulative for the active run |
 | Field Extension | +10 px magnetism distance | Cumulative and additive for the active run |
+| Fault Amplifier | Common; +5 percentage points critical chance | Additive from the 5% base: 10%, 15%, 20%, and so on, capped at 100% |
 | Double Shot | Rare; one-time unlock | Fires one follow-up projectile 500 ms after every primary shot |
 | Penetrating Shot | Rare; one-time unlock | Each projectile kills and passes through its first enemy, then despawns after striking a second |
 | Nanite Rehab | Rare; one-time unlock | Restores 1 HP every 2,000 ms of active gameplay while below maximum health |
@@ -302,3 +309,5 @@ Enemy spawn positions, in enemy order:
 - Added red triangle charger enemies: 2 contact damage, a 2-XP drop, a 250 px trigger radius, a direction-locked 250 px lunge at 3× base speed, and a 10-second lunge cooldown. One charger spawns at 0:30 and every 10 active seconds afterward through 2:50.
 - Added a reusable red-family enemy palette: circle pursuers remain crimson while Chargers use vermilion, with silhouette retained as the primary role cue. Increased Charger lunge speed by 50%, from 3× to 4.5× base speed, without changing its 250 px travel distance or 10-second cooldown.
 - Added an 8 px direction-based knockback to every standard bullet and shotgun-pellet hit. The shove resolves before damage so defeated enemies drop XP at the displaced position; a 120 ms impact streak/ring makes the movement readable. Electro Therapy is excluded because it is an electrical arc rather than a mass-carrying projectile.
+- Added floating combat numbers: outgoing enemy damage is white, incoming player damage is vivid pink, and critical hits are larger gold `CRIT` numbers. Numbers float/fade for 650 ms of active gameplay and freeze while paused.
+- Added a 5% base critical-hit chance with 2× damage across physical projectiles and both Electro Therapy target paths. Added repeatable Common Fault Amplifier, granting +5 percentage points per rank, plus HUD/testing-menu/runtime telemetry support.

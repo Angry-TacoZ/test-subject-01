@@ -11,6 +11,11 @@ const PROJECTILE_RADIUS = 4;
 const PROJECTILE_DAMAGE = 1;
 const PROJECTILE_KNOCKBACK_DISTANCE = 8;
 const PROJECTILE_IMPACT_LIFETIME_MS = 120;
+const BASE_CRITICAL_CHANCE = 0.05;
+const CRITICAL_CHANCE_UPGRADE_STEP = 0.05;
+const CRITICAL_DAMAGE_MULTIPLIER = 2;
+const DAMAGE_NUMBER_LIFETIME_MS = 650;
+const MAX_ACTIVE_DAMAGE_NUMBERS = 64;
 const DOUBLE_SHOT_DELAY_MS = 500;
 const NANITE_REHAB_HEALING = 1;
 const NANITE_REHAB_INTERVAL_MS = 2000;
@@ -97,6 +102,13 @@ const UPGRADE_DEFINITIONS = [
     code: "FIELD EXTENSION",
     name: "+10 px Magnetism",
     effect: "Increase the XP attraction distance by 10 pixels.",
+  },
+  {
+    id: "critical",
+    rarity: "common",
+    code: "FAULT AMPLIFIER",
+    name: "+5% Critical Chance",
+    effect: "Increase critical-hit chance by 5 percentage points.",
   },
   {
     id: "doubleShot",
@@ -273,6 +285,11 @@ class TitleScene extends Phaser.Scene {
     this.completedPenetrations = 0;
     this.projectileKnockbacks = 0;
     this.lastProjectileKnockback = null;
+    this.damageNumbers = [];
+    this.criticalRolls = 0;
+    this.criticalHits = 0;
+    this.lastCriticalHit = null;
+    this.forcedCriticalResults = [];
     this.naniteRegenAccumulatorMs = 0;
     this.naniteHealingApplied = 0;
     this.survivalElapsedMs = 0;
@@ -290,7 +307,7 @@ class TitleScene extends Phaser.Scene {
     this.totalPlayerXp = 0;
     this.playerLevel = 1;
     this.xpRequired = INITIAL_LEVEL_XP_REQUIRED;
-    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, doubleShot: 0, penetratingShot: 0, naniteRehab: 0, electroTherapy: 0, shotgun: 0 };
+    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, critical: 0, doubleShot: 0, penetratingShot: 0, naniteRehab: 0, electroTherapy: 0, shotgun: 0 };
     this.pendingUpgradeChoices = [];
     this.nextEnemyId = 1;
     this.spawnElapsedMs = 0;
@@ -324,6 +341,7 @@ class TitleScene extends Phaser.Scene {
     this.statVolleyElement = document.querySelector("#stat-volley");
     this.statPenetrationElement = document.querySelector("#stat-penetration");
     this.statRegenElement = document.querySelector("#stat-regen");
+    this.statCriticalElement = document.querySelector("#stat-critical");
     this.statWeaponElement = document.querySelector("#stat-weapon");
     this.gridOffset = 0;
     this.streakClock = 180;
@@ -535,6 +553,7 @@ class TitleScene extends Phaser.Scene {
   }
 
   startLevel() {
+    this.clearDamageNumbers();
     this.levelActive = true;
     this.moveTarget = null;
     this.collisionPairsLastFrame = 0;
@@ -555,6 +574,10 @@ class TitleScene extends Phaser.Scene {
     this.completedPenetrations = 0;
     this.projectileKnockbacks = 0;
     this.lastProjectileKnockback = null;
+    this.criticalRolls = 0;
+    this.criticalHits = 0;
+    this.lastCriticalHit = null;
+    this.forcedCriticalResults = [];
     this.naniteRegenAccumulatorMs = 0;
     this.naniteHealingApplied = 0;
     this.survivalElapsedMs = 0;
@@ -572,7 +595,7 @@ class TitleScene extends Phaser.Scene {
     this.totalPlayerXp = 0;
     this.playerLevel = 1;
     this.xpRequired = INITIAL_LEVEL_XP_REQUIRED;
-    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, doubleShot: 0, penetratingShot: 0, naniteRehab: 0, electroTherapy: 0, shotgun: 0 };
+    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, critical: 0, doubleShot: 0, penetratingShot: 0, naniteRehab: 0, electroTherapy: 0, shotgun: 0 };
     this.pendingUpgradeChoices = [];
     this.nextEnemyId = 1;
     this.spawnElapsedMs = 0;
@@ -701,6 +724,7 @@ class TitleScene extends Phaser.Scene {
   }
 
   stopLevel() {
+    this.clearDamageNumbers();
     this.levelActive = false;
     this.entities = [];
     this.moveTarget = null;
@@ -722,6 +746,10 @@ class TitleScene extends Phaser.Scene {
     this.completedPenetrations = 0;
     this.projectileKnockbacks = 0;
     this.lastProjectileKnockback = null;
+    this.criticalRolls = 0;
+    this.criticalHits = 0;
+    this.lastCriticalHit = null;
+    this.forcedCriticalResults = [];
     this.naniteRegenAccumulatorMs = 0;
     this.naniteHealingApplied = 0;
     this.survivalElapsedMs = 0;
@@ -734,7 +762,7 @@ class TitleScene extends Phaser.Scene {
     this.totalPlayerXp = 0;
     this.playerLevel = 1;
     this.xpRequired = INITIAL_LEVEL_XP_REQUIRED;
-    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, doubleShot: 0, penetratingShot: 0, naniteRehab: 0, electroTherapy: 0, shotgun: 0 };
+    this.upgradeRanks = { health: 0, speed: 0, reload: 0, magnetism: 0, critical: 0, doubleShot: 0, penetratingShot: 0, naniteRehab: 0, electroTherapy: 0, shotgun: 0 };
     this.pendingUpgradeChoices = [];
     this.spawnElapsedMs = 0;
     this.spawnAccumulator = 0;
@@ -749,6 +777,7 @@ class TitleScene extends Phaser.Scene {
     const deltaSeconds = deltaMs / 1000;
     const player = this.entities[0];
     this.impactFlashMs = Math.max(0, this.impactFlashMs - deltaMs);
+    this.updateDamageNumbers(deltaMs);
     this.weaponReloadMs = Math.max(0, this.weaponReloadMs - deltaMs);
     this.electroCooldownMs = Math.max(0, this.electroCooldownMs - deltaMs);
     this.updateNaniteRehab(deltaMs);
@@ -1133,7 +1162,7 @@ class TitleScene extends Phaser.Scene {
       });
       this.electroTargetsHit += 1;
       this.electroChainHits += 1;
-      this.damageEnemy(target, ELECTRO_THERAPY_DAMAGE);
+      this.dealPlayerDamage(target, ELECTRO_THERAPY_DAMAGE, "electro-chain");
     }
   }
 
@@ -1159,7 +1188,7 @@ class TitleScene extends Phaser.Scene {
           lifeMs: ELECTRO_THERAPY_ARC_LIFETIME_MS,
         });
         this.electroTargetsHit += 1;
-        this.damageEnemy(hitEnemy, ELECTRO_THERAPY_DAMAGE);
+        this.dealPlayerDamage(hitEnemy, ELECTRO_THERAPY_DAMAGE, "electro-projectile");
         this.pendingElectroChains.push({
           remainingMs: ELECTRO_THERAPY_CHAIN_DELAY_MS,
           x: impactX,
@@ -1211,8 +1240,12 @@ class TitleScene extends Phaser.Scene {
         projectile.hitEnemyIds.push(hitEnemy.id);
         projectile.hitCount += 1;
         const knockback = this.applyProjectileKnockback(hitEnemy, projectile);
-        const killed = this.damageEnemy(hitEnemy, projectile.damage);
-        knockback.killed = killed;
+        const damageResult = this.dealPlayerDamage(
+          hitEnemy,
+          projectile.damage,
+          projectile.weaponMode === "shotgun" ? "shotgun-pellet" : "standard-projectile",
+        );
+        knockback.killed = damageResult.killed;
         this.lastProjectileKnockback = knockback;
         if (projectile.hitCount >= projectile.hitLimit) {
           if (projectile.hitLimit > 1) this.completedPenetrations += 1;
@@ -1336,6 +1369,92 @@ class TitleScene extends Phaser.Scene {
       (MAGNETISM_UPGRADE_STEP * this.upgradeRanks.magnetism);
   }
 
+  getCriticalChance() {
+    return Math.min(1, BASE_CRITICAL_CHANCE +
+      this.upgradeRanks.critical * CRITICAL_CHANCE_UPGRADE_STEP);
+  }
+
+  rollPlayerDamage(baseDamage) {
+    const forcedResult = this.forcedCriticalResults.shift();
+    const critical = forcedResult ?? (Math.random() < this.getCriticalChance());
+    this.criticalRolls += 1;
+    if (critical) this.criticalHits += 1;
+    return {
+      baseDamage,
+      damage: baseDamage * (critical ? CRITICAL_DAMAGE_MULTIPLIER : 1),
+      critical,
+    };
+  }
+
+  dealPlayerDamage(enemy, baseDamage, source) {
+    const result = this.rollPlayerDamage(baseDamage);
+    const x = enemy.x;
+    const y = enemy.y;
+    const killed = this.damageEnemy(enemy, result.damage);
+    this.spawnDamageNumber(x, y, result.damage, "enemy", result.critical);
+    this.lastCriticalHit = {
+      source,
+      enemyId: enemy.id,
+      baseDamage: result.baseDamage,
+      damage: result.damage,
+      critical: result.critical,
+      killed,
+    };
+    return { ...result, killed };
+  }
+
+  spawnDamageNumber(x, y, damage, target, critical = false) {
+    if (this.damageNumbers.length >= MAX_ACTIVE_DAMAGE_NUMBERS) {
+      this.damageNumbers.shift().element.remove();
+    }
+    const isPlayerDamage = target === "player";
+    const color = isPlayerDamage ? "#ff4fd8" : critical ? "#ffd166" : "#ffffff";
+    const label = critical ? `CRIT ${damage}` : `-${damage}`;
+    const horizontalOffset = ((this.damageNumbers.length % 3) - 1) * 7;
+    const numberX = x + horizontalOffset + (isPlayerDamage ? -24 : 0);
+    const numberY = y + (isPlayerDamage ? 24 : -16);
+    const element = document.createElement("span");
+    element.className = `damage-number${isPlayerDamage ? " player-damage" : ""}${critical ? " critical-damage" : ""}`;
+    element.textContent = label;
+    element.style.left = `${numberX}px`;
+    element.style.top = `${numberY}px`;
+    document.querySelector("#damage-number-layer").append(element);
+    this.damageNumbers.push({
+      element,
+      x: numberX,
+      y: numberY,
+      damage,
+      target,
+      critical,
+      color,
+      lifeMs: DAMAGE_NUMBER_LIFETIME_MS,
+    });
+  }
+
+  updateDamageNumbers(deltaMs) {
+    const survivors = [];
+    for (const number of this.damageNumbers) {
+      number.lifeMs -= deltaMs;
+      if (number.lifeMs <= 0) {
+        number.element.remove();
+        continue;
+      }
+      number.y -= (32 * deltaMs) / 1000;
+      number.element.style.left = `${number.x}px`;
+      number.element.style.top = `${number.y}px`;
+      number.element.style.opacity = String(
+        Phaser.Math.Clamp(number.lifeMs / DAMAGE_NUMBER_LIFETIME_MS, 0, 1),
+      );
+      survivors.push(number);
+    }
+    this.damageNumbers = survivors;
+  }
+
+  clearDamageNumbers() {
+    for (const number of this.damageNumbers ?? []) number.element.remove();
+    this.damageNumbers = [];
+  }
+
   getEligibleUpgrades() {
     return UPGRADE_DEFINITIONS.filter((upgrade) =>
       !upgrade.oneTime || this.upgradeRanks[upgrade.id] === 0,
@@ -1401,6 +1520,8 @@ class TitleScene extends Phaser.Scene {
       this.updateElectroHud();
     } else if (upgradeId === "magnetism") {
       this.upgradeRanks.magnetism += 1;
+    } else if (upgradeId === "critical") {
+      this.upgradeRanks.critical += 1;
     } else if (upgradeId === "doubleShot") {
       if (this.upgradeRanks.doubleShot > 0) return false;
       this.upgradeRanks.doubleShot = 1;
@@ -1517,6 +1638,7 @@ class TitleScene extends Phaser.Scene {
     this.statVolleyElement.textContent = `${this.getWeaponVolleySize() * volleyMultiplier}x`;
     this.statPenetrationElement.textContent = `${this.getProjectileHitLimit()}x`;
     this.statRegenElement.textContent = this.upgradeRanks.naniteRehab > 0 ? "1 / 2s" : "LOCKED";
+    this.statCriticalElement.textContent = `${Math.round(this.getCriticalChance() * 100)}%`;
     this.statWeaponElement.textContent = this.getStandardWeaponMode() === "shotgun" ? "SHOTGUN" : "SINGLE";
   }
 
@@ -1566,6 +1688,7 @@ class TitleScene extends Phaser.Scene {
       enemy.hitCooldownMs = 650;
       const player = first.kind === "player" ? first : second;
       player.health = Math.max(0, player.health - enemy.contactDamage);
+      this.spawnDamageNumber(player.x, player.y, enemy.contactDamage, "player");
       this.updateHitCounter();
       this.updateHealthHud();
       playContactSfx();
@@ -2473,6 +2596,17 @@ window.render_game_to_text = () => {
                 }
               : null,
           })),
+          damageNumbers: scene.damageNumbers.map((number) => ({
+            text: number.element.textContent,
+            x: roundCoordinate(number.x),
+            y: roundCoordinate(number.y),
+            damage: number.damage,
+            target: number.target,
+            critical: number.critical,
+            color: number.color,
+            remainingMs: roundCoordinate(number.lifeMs),
+          })),
+          damageNumberCapacity: MAX_ACTIVE_DAMAGE_NUMBERS,
           collisionPairsLastFrame: scene.collisionPairsLastFrame,
           moveTarget: scene.moveTarget,
           weapon: {
@@ -2484,6 +2618,15 @@ window.render_game_to_text = () => {
               y: roundCoordinate(scene.aimDirection.y),
             },
             damage: PROJECTILE_DAMAGE,
+            critical: {
+              baseChance: BASE_CRITICAL_CHANCE,
+              chancePerUpgrade: CRITICAL_CHANCE_UPGRADE_STEP,
+              currentChance: roundCoordinate(scene.getCriticalChance()),
+              damageMultiplier: CRITICAL_DAMAGE_MULTIPLIER,
+              rolls: scene.criticalRolls,
+              hits: scene.criticalHits,
+              last: scene.lastCriticalHit,
+            },
             reloadDurationMs: roundCoordinate(scene.getReloadDurationMs()),
             reloadSpeedMultiplier: roundCoordinate(scene.getReloadSpeedMultiplier()),
             reloadRemainingMs: roundCoordinate(scene.weaponReloadMs),
@@ -2709,6 +2852,20 @@ window.advanceTime = (ms) => {
 
 if (import.meta.env.DEV) {
   window.__testSubject01 = {
+    forceNextCritical(critical = true) {
+      const scene = game.scene.getScene("title");
+      if (!scene.levelActive) return false;
+      scene.forcedCriticalResults.push(Boolean(critical));
+      return true;
+    },
+    setEnemyHealth(enemyId, health) {
+      const scene = game.scene.getScene("title");
+      const enemy = scene.entities.find((entity) => entity.id === enemyId && entity.kind === "enemy");
+      if (!scene.levelActive || !enemy || !Number.isFinite(health) || health <= 0) return false;
+      enemy.maxHealth = health;
+      enemy.health = health;
+      return true;
+    },
     setPlayerHealth(health) {
       const scene = game.scene.getScene("title");
       const player = scene.entities[0];
