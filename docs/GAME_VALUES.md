@@ -22,6 +22,8 @@ This is the human-readable record of accepted gameplay and system values. Update
 | Circle radius | 20 px | Collision radius and rendered body radius |
 | Character color | Grey | Grey core, pale outline, and neutral glow distinguish the player from rarity colors |
 | Base movement speed | 230 px/s | Same maximum for keyboard, controller, and destination movement |
+| Movement acceleration | 1,400 px/s² | Frame-rate-independent ramp toward the desired velocity |
+| Movement deceleration | 1,800 px/s² | Responsive braking when input releases or a destination is reached |
 | Speed upgrade | +10% base speed per rank | Additive ranks: 253, 276, 299 px/s, and so on |
 | Destination arrival distance | 5 px | Right-click/touch movement target clears inside this distance |
 | Spawn | 50% x, 50% y | Relative to the playable arena |

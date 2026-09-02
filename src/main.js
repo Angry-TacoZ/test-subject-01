@@ -6,6 +6,8 @@ const GAMEPAD_MENU_THRESHOLD = 0.65;
 const GAMEPAD_SLIDER_STEP = 5;
 const BASE_WEAPON_RELOAD_MS = 1500;
 const BASE_PLAYER_SPEED = 230;
+const PLAYER_ACCELERATION = 1400;
+const PLAYER_DECELERATION = 1800;
 const PROJECTILE_SPEED = 650;
 const PROJECTILE_RADIUS = 4;
 const PROJECTILE_DAMAGE = 1;
@@ -822,29 +824,51 @@ class TitleScene extends Phaser.Scene {
       this.gamepadMovement.y,
     );
 
+    let desiredVelocityX = 0;
+    let desiredVelocityY = 0;
+    let destinationDistance = null;
     if (keyboardLength > 0) {
       this.moveTarget = null;
-      player.vx = (horizontal / keyboardLength) * this.getPlayerSpeed();
-      player.vy = (vertical / keyboardLength) * this.getPlayerSpeed();
+      desiredVelocityX = (horizontal / keyboardLength) * this.getPlayerSpeed();
+      desiredVelocityY = (vertical / keyboardLength) * this.getPlayerSpeed();
     } else if (controllerLength > 0) {
       this.moveTarget = null;
-      player.vx = this.gamepadMovement.x * this.getPlayerSpeed();
-      player.vy = this.gamepadMovement.y * this.getPlayerSpeed();
+      desiredVelocityX = this.gamepadMovement.x * this.getPlayerSpeed();
+      desiredVelocityY = this.gamepadMovement.y * this.getPlayerSpeed();
     } else if (this.moveTarget) {
       const dx = this.moveTarget.x - player.x;
       const dy = this.moveTarget.y - player.y;
-      const distance = Math.hypot(dx, dy);
-      if (distance <= 5) {
-        this.moveTarget = null;
-        player.vx = 0;
-        player.vy = 0;
-      } else {
-        player.vx = (dx / distance) * this.getPlayerSpeed();
-        player.vy = (dy / distance) * this.getPlayerSpeed();
+      destinationDistance = Math.hypot(dx, dy);
+      if (destinationDistance > 0.001) {
+        const destinationSpeed = Math.min(
+          this.getPlayerSpeed(),
+          Math.sqrt(2 * PLAYER_DECELERATION * destinationDistance),
+        );
+        desiredVelocityX = (dx / destinationDistance) * destinationSpeed;
+        desiredVelocityY = (dy / destinationDistance) * destinationSpeed;
       }
+    }
+    const desiredSpeed = Math.hypot(desiredVelocityX, desiredVelocityY);
+    const currentSpeed = Math.hypot(player.vx, player.vy);
+    const maxSpeedChange = (desiredSpeed < currentSpeed ? PLAYER_DECELERATION : PLAYER_ACCELERATION) * deltaSeconds;
+    const nextSpeed = currentSpeed + Phaser.Math.Clamp(desiredSpeed - currentSpeed, -maxSpeedChange, maxSpeedChange);
+    const speedScale = currentSpeed > 0.001 ? nextSpeed / currentSpeed : 0;
+    const brakingVelocityX = player.vx * speedScale;
+    const brakingVelocityY = player.vy * speedScale;
+    if (desiredSpeed > 0.001) {
+      const blend = nextSpeed / desiredSpeed;
+      player.vx = desiredVelocityX * blend;
+      player.vy = desiredVelocityY * blend;
     } else {
+      player.vx = brakingVelocityX;
+      player.vy = brakingVelocityY;
+    }
+    if (destinationDistance !== null && destinationDistance <= 5 && nextSpeed <= 0.001) {
+      player.x = this.moveTarget.x;
+      player.y = this.moveTarget.y;
       player.vx = 0;
       player.vy = 0;
+      this.moveTarget = null;
     }
 
     for (const enemy of this.entities.slice(1)) {
@@ -889,6 +913,17 @@ class TitleScene extends Phaser.Scene {
       const previousY = entity.y;
       entity.x += entity.vx * deltaSeconds;
       entity.y += entity.vy * deltaSeconds;
+      if (entity === player && this.moveTarget) {
+        const beforeDistance = Math.hypot(this.moveTarget.x - previousX, this.moveTarget.y - previousY);
+        const afterDistance = Math.hypot(this.moveTarget.x - entity.x, this.moveTarget.y - entity.y);
+        if (afterDistance > beforeDistance) {
+          entity.x = this.moveTarget.x;
+          entity.y = this.moveTarget.y;
+          entity.vx = 0;
+          entity.vy = 0;
+          this.moveTarget = null;
+        }
+      }
       const hitArenaBoundary = this.resolveArenaBoundary(entity);
       if (entity.enemyType === "charger" && entity.lungeActive) {
         const lungeStepDistance = Math.hypot(entity.x - previousX, entity.y - previousY);
@@ -2567,6 +2602,10 @@ window.render_game_to_text = () => {
                 health: scene.entities[0].health,
                 maxHealth: scene.entities[0].maxHealth,
                 movementSpeed: roundCoordinate(scene.getPlayerSpeed()),
+                movementTuning: {
+                  acceleration: PLAYER_ACCELERATION,
+                  deceleration: PLAYER_DECELERATION,
+                },
                 naniteRehab: {
                   unlocked: scene.upgradeRanks.naniteRehab > 0,
                   healingPerTick: NANITE_REHAB_HEALING,

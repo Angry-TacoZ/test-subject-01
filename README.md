@@ -10,6 +10,16 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 
 ## Patch notes
 
+### Responsive Movement Update — September 2, 2026
+
+#### Movement feel
+
+- Added responsive acceleration and braking across keyboard, Xbox, mouse destination, and touch destination movement.
+- Preserved the 230 px/s starting speed cap and 5 px destination arrival radius.
+- Added stopping-distance easing so click/tap movement arrives smoothly without overshooting.
+
+[Full change and review history: PR #8](https://github.com/Angry-TacoZ/test-subject-01/pull/8)
+
 ### Critical Response Update — August 24, 2026
 
 #### Combat feedback
