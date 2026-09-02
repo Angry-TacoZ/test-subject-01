@@ -10,6 +10,21 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 
 ## Patch notes
 
+### Critical Response Update — August 24, 2026
+
+#### Combat feedback
+
+- Added floating damage numbers: white for damage dealt to enemies and vivid pink for damage received by the player.
+- Critical hits display as larger gold `CRIT` numbers for immediate recognition beyond color alone.
+
+#### Critical system
+
+- The player starts with a 5% critical-hit chance and critical hits deal 2× damage.
+- Critical rolls apply to standard bullets, Shotgun pellets, Penetrating Shot hits, Double Shot follow-ups, and both Electro Therapy targets.
+- Added **Fault Amplifier — Common**, increasing critical chance by 5 percentage points per rank through a 100% cap; it leaves the offer pool at that cap.
+
+[Full change and review history: PR #7](https://github.com/Angry-TacoZ/test-subject-01/pull/7)
+
 ### Projectile Impact Update — August 24, 2026
 
 #### Combat feedback
