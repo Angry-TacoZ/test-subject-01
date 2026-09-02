@@ -1474,8 +1474,12 @@ class TitleScene extends Phaser.Scene {
 
   getEligibleUpgrades() {
     return UPGRADE_DEFINITIONS.filter((upgrade) =>
-      !upgrade.oneTime || this.upgradeRanks[upgrade.id] === 0,
+      (!upgrade.oneTime || this.upgradeRanks[upgrade.id] === 0) && !this.isUpgradeCapped(upgrade.id),
     );
+  }
+
+  isUpgradeCapped(upgradeId) {
+    return upgradeId === "critical" && this.getCriticalChance() >= 1;
   }
 
   rollUpgradeChoices() {
@@ -1513,6 +1517,7 @@ class TitleScene extends Phaser.Scene {
     const upgrade = UPGRADE_DEFINITIONS.find((candidate) => candidate.id === upgradeId);
     if (!this.levelActive || !upgrade) return false;
     if (upgrade.oneTime && this.upgradeRanks[upgradeId] > 0) return false;
+    if (this.isUpgradeCapped(upgradeId)) return false;
     return this.applyUpgradeEffect(upgradeId);
   }
 
@@ -1538,6 +1543,7 @@ class TitleScene extends Phaser.Scene {
     } else if (upgradeId === "magnetism") {
       this.upgradeRanks.magnetism += 1;
     } else if (upgradeId === "critical") {
+      if (this.isUpgradeCapped(upgradeId)) return false;
       this.upgradeRanks.critical += 1;
     } else if (upgradeId === "doubleShot") {
       if (this.upgradeRanks.doubleShot > 0) return false;
@@ -2152,8 +2158,9 @@ function updateTestingUpgradeButtons() {
     if (!upgrade) continue;
     const rank = scene?.upgradeRanks?.[upgrade.id] ?? 0;
     const alreadyOwned = Boolean(upgrade.oneTime && rank > 0);
-    button.disabled = !activeRun || alreadyOwned;
-    button.textContent = `${upgrade.rarity.toUpperCase()} // ${upgrade.name}${upgrade.oneTime ? (alreadyOwned ? " // OWNED" : "") : ` // RANK ${rank}`}`;
+    const capped = Boolean(scene?.isUpgradeCapped?.(upgrade.id));
+    button.disabled = !activeRun || alreadyOwned || capped;
+    button.textContent = `${upgrade.rarity.toUpperCase()} // ${upgrade.name}${upgrade.oneTime ? (alreadyOwned ? " // OWNED" : "") : (capped ? " // CAPPED" : ` // RANK ${rank}`)}`;
   }
 }
 

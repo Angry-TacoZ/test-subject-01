@@ -21,7 +21,7 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 
 - The player starts with a 5% critical-hit chance and critical hits deal 2× damage.
 - Critical rolls apply to standard bullets, Shotgun pellets, Penetrating Shot hits, Double Shot follow-ups, and both Electro Therapy targets.
-- Added **Fault Amplifier — Common**, increasing critical chance by 5 percentage points per rank.
+- Added **Fault Amplifier — Common**, increasing critical chance by 5 percentage points per rank through a 100% cap; it leaves the offer pool at that cap.
 
 [Full change and review history: PR #7](https://github.com/Angry-TacoZ/test-subject-01/pull/7)
 

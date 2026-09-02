@@ -158,7 +158,7 @@ Enemy spawn positions, in enemy order:
 | Motor Response | +10% base movement speed | Cumulative for the active run |
 | Cycling Rate | +10% reload rate | Cumulative for the active run |
 | Field Extension | +10 px magnetism distance | Cumulative and additive for the active run |
-| Fault Amplifier | Common; +5 percentage points critical chance | Additive from the 5% base: 10%, 15%, 20%, and so on, capped at 100% |
+| Fault Amplifier | Common; +5 percentage points critical chance | Additive from the 5% base; ranks 1–19 reach 10%–100%, then it is removed from level-up offers and disabled as `CAPPED` in Testing |
 | Double Shot | Rare; one-time unlock | Fires one follow-up projectile 500 ms after every primary shot |
 | Penetrating Shot | Rare; one-time unlock | Each projectile kills and passes through its first enemy, then despawns after striking a second |
 | Nanite Rehab | Rare; one-time unlock | Restores 1 HP every 2,000 ms of active gameplay while below maximum health |
