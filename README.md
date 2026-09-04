@@ -14,7 +14,7 @@ The public build is deployed to [GitHub Pages](https://angry-tacoz.github.io/tes
 
 #### Movement feel
 
-- Added responsive acceleration and braking across keyboard, Xbox, mouse destination, and touch destination movement.
+- Added responsive vector acceleration and braking across keyboard, Xbox, mouse destination, and touch destination movement; reversals brake through the prior direction and sharp turns curve rather than snap.
 - Preserved the 230 px/s starting speed cap and 5 px destination arrival radius.
 - Added stopping-distance easing so click/tap movement arrives smoothly without overshooting.
 - Expanded Level 01 to a 4× world area with smooth horizontal and vertical camera scrolling near the screen edges.

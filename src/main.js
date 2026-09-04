@@ -930,22 +930,34 @@ class TitleScene extends Phaser.Scene {
         desiredVelocityY = (dy / destinationDistance) * destinationSpeed;
       }
     }
+    if (destinationDistance !== null && destinationDistance <= 5) {
+      desiredVelocityX = 0;
+      desiredVelocityY = 0;
+    }
     const desiredSpeed = Math.hypot(desiredVelocityX, desiredVelocityY);
     const currentSpeed = Math.hypot(player.vx, player.vy);
-    const maxSpeedChange = (desiredSpeed < currentSpeed ? PLAYER_DECELERATION : PLAYER_ACCELERATION) * deltaSeconds;
-    const nextSpeed = currentSpeed + Phaser.Math.Clamp(desiredSpeed - currentSpeed, -maxSpeedChange, maxSpeedChange);
-    const speedScale = currentSpeed > 0.001 ? nextSpeed / currentSpeed : 0;
-    const brakingVelocityX = player.vx * speedScale;
-    const brakingVelocityY = player.vy * speedScale;
-    if (desiredSpeed > 0.001) {
-      const blend = nextSpeed / desiredSpeed;
-      player.vx = desiredVelocityX * blend;
-      player.vy = desiredVelocityY * blend;
+    const directionDot = player.vx * desiredVelocityX + player.vy * desiredVelocityY;
+    const directionIsChanging =
+      currentSpeed > 0.001 &&
+      desiredSpeed > 0.001 &&
+      directionDot < currentSpeed * desiredSpeed * 0.999;
+    const velocityRate =
+      desiredSpeed < currentSpeed || directionIsChanging
+        ? PLAYER_DECELERATION
+        : PLAYER_ACCELERATION;
+    const velocityDeltaX = desiredVelocityX - player.vx;
+    const velocityDeltaY = desiredVelocityY - player.vy;
+    const velocityDeltaLength = Math.hypot(velocityDeltaX, velocityDeltaY);
+    const maximumVelocityDelta = velocityRate * deltaSeconds;
+    if (velocityDeltaLength <= maximumVelocityDelta || velocityDeltaLength <= 0.001) {
+      player.vx = desiredVelocityX;
+      player.vy = desiredVelocityY;
     } else {
-      player.vx = brakingVelocityX;
-      player.vy = brakingVelocityY;
+      const velocityBlend = maximumVelocityDelta / velocityDeltaLength;
+      player.vx += velocityDeltaX * velocityBlend;
+      player.vy += velocityDeltaY * velocityBlend;
     }
-    if (destinationDistance !== null && destinationDistance <= 5 && nextSpeed <= 0.001) {
+    if (destinationDistance !== null && destinationDistance <= 5 && Math.hypot(player.vx, player.vy) <= 0.001) {
       player.x = this.moveTarget.x;
       player.y = this.moveTarget.y;
       player.vx = 0;
@@ -1599,7 +1611,7 @@ class TitleScene extends Phaser.Scene {
       item.y = nextArena.y + ((item.y - previousArena.y) / previousArena.height) * nextArena.height;
     };
     for (const entity of this.entities) remap(entity);
-    for (const projectile of this.projectiles) {
+    const remapProjectile = (projectile) => {
       remap(projectile);
       if (Number.isFinite(projectile.previousX) && Number.isFinite(projectile.previousY)) {
         const previous = { x: projectile.previousX, y: projectile.previousY };
@@ -1607,7 +1619,9 @@ class TitleScene extends Phaser.Scene {
         projectile.previousX = previous.x;
         projectile.previousY = previous.y;
       }
-    }
+    };
+    for (const projectile of this.projectiles) remapProjectile(projectile);
+    for (const projectile of this.electroProjectiles) remapProjectile(projectile);
     for (const drop of this.xpDrops) remap(drop);
     for (const chain of this.pendingElectroChains) remap(chain);
     if (this.moveTarget) remap(this.moveTarget);
@@ -1620,6 +1634,16 @@ class TitleScene extends Phaser.Scene {
       arc.fromY = from.y;
       arc.toX = to.x;
       arc.toY = to.y;
+    }
+    for (const burst of this.projectileImpactBursts) {
+      const from = { x: burst.fromX, y: burst.fromY };
+      const to = { x: burst.toX, y: burst.toY };
+      remap(from);
+      remap(to);
+      burst.fromX = from.x;
+      burst.fromY = from.y;
+      burst.toX = to.x;
+      burst.toY = to.y;
     }
   }
 
@@ -3036,12 +3060,16 @@ window.render_game_to_text = () => {
   });
 };
 
-window.advanceTime = (ms) => {
+window.advanceTime = (ms, requestedFrameMs = 1000 / 60) => {
   const scene = game.scene.getScene("title");
   if (!scene?.scene.isActive()) return;
-  const frameMs = 1000 / 60;
-  const steps = Math.max(1, Math.round(ms / frameMs));
-  for (let step = 0; step < steps; step += 1) scene.update(0, frameMs);
+  const frameMs = Phaser.Math.Clamp(Number(requestedFrameMs) || 1000 / 60, 1, 1000 / 30);
+  let remainingMs = Math.max(0, ms);
+  while (remainingMs > 0) {
+    const stepMs = Math.min(frameMs, remainingMs);
+    scene.update(0, stepMs);
+    remainingMs -= stepMs;
+  }
 };
 
 if (import.meta.env.DEV) {
@@ -3104,6 +3132,23 @@ if (import.meta.env.DEV) {
       charger.vy = 0;
       charger.angle = Math.PI;
       return charger.id;
+    },
+    spawnCircleNearPlayer(distance = 200) {
+      const scene = game.scene.getScene("title");
+      const player = scene.entities[0];
+      if (!scene.levelActive || !player) return null;
+      scene.createEnemyAtNormalizedPosition(0.5, 0.5, false, "circle");
+      const enemy = scene.entities.at(-1);
+      const arena = scene.getArenaBounds();
+      enemy.x = Phaser.Math.Clamp(
+        player.x + distance,
+        arena.x + enemy.radius,
+        arena.x + arena.width - enemy.radius,
+      );
+      enemy.y = player.y;
+      enemy.vx = -enemy.speed;
+      enemy.vy = 0;
+      return enemy.id;
     },
     setPlayerPosition(x, y) {
       const scene = game.scene.getScene("title");

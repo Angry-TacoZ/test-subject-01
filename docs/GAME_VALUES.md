@@ -23,8 +23,8 @@ This is the human-readable record of accepted gameplay and system values. Update
 | Circle radius | 20 px | Collision radius and rendered body radius |
 | Character color | Grey | Grey core, pale outline, and neutral glow distinguish the player from rarity colors |
 | Base movement speed | 230 px/s | Same maximum for keyboard, controller, and destination movement |
-| Movement acceleration | 1,400 px/s² | Frame-rate-independent ramp toward the desired velocity |
-| Movement deceleration | 1,800 px/s² | Responsive braking when input releases or a destination is reached |
+| Movement acceleration | 1,400 px/s² | Frame-rate-independent vector ramp toward the desired velocity |
+| Movement deceleration | 1,800 px/s² | Vector braking on release, reversal, sharp turns, and destination arrival |
 | Speed upgrade | +10% base speed per rank | Additive ranks: 253, 276, 299 px/s, and so on |
 | Destination arrival distance | 5 px | Right-click/touch movement target clears inside this distance |
 | Camera follow | Smooth edge-follow | Camera begins following 72 px before the visible arena edge and eases at 7 / second |
