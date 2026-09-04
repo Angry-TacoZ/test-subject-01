@@ -6,6 +6,11 @@ const GAMEPAD_MENU_THRESHOLD = 0.65;
 const GAMEPAD_SLIDER_STEP = 5;
 const BASE_WEAPON_RELOAD_MS = 1500;
 const BASE_PLAYER_SPEED = 230;
+const PLAYER_ACCELERATION = 1400;
+const PLAYER_DECELERATION = 1800;
+const WORLD_MAP_SCALE = 2;
+const CAMERA_FOLLOW_SPEED = 7;
+const CAMERA_EDGE_BUFFER = 72;
 const PROJECTILE_SPEED = 650;
 const PROJECTILE_RADIUS = 4;
 const PROJECTILE_DAMAGE = 1;
@@ -372,7 +377,8 @@ class TitleScene extends Phaser.Scene {
     this.input.on("pointermove", (pointer) => {
       if (!this.levelActive || state.mode !== "level") return;
       if (pointer.wasTouch || pointer.event?.pointerType === "touch") return;
-      this.setAimToward(pointer.x, pointer.y, "mouse");
+      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+      this.setAimToward(worldPoint.x, worldPoint.y, "mouse");
     });
     this.input.on("pointerdown", (pointer) => {
       if (!this.levelActive || state.mode !== "level") return;
@@ -381,21 +387,23 @@ class TitleScene extends Phaser.Scene {
         : "mouse";
       const button = pointer.event?.button ?? 0;
       if (pointerType !== "touch" && button === 0) {
-        this.setAimToward(pointer.x, pointer.y, "mouse");
+        const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+        this.setAimToward(worldPoint.x, worldPoint.y, "mouse");
         this.tryFire();
         return;
       }
       if (pointerType !== "touch" && button !== 2) return;
       const arena = this.getArenaBounds();
+      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
       const playerRadius = this.entities[0]?.radius ?? 20;
       this.moveTarget = {
         x: Phaser.Math.Clamp(
-          pointer.x,
+          worldPoint.x,
           arena.x + playerRadius,
           arena.x + arena.width - playerRadius,
         ),
         y: Phaser.Math.Clamp(
-          pointer.y,
+          worldPoint.y,
           arena.y + playerRadius,
           arena.y + arena.height - playerRadius,
         ),
@@ -403,9 +411,20 @@ class TitleScene extends Phaser.Scene {
     });
     this.scale.on("resize", () => {
       if (this.levelActive) {
-        this.remapDamageNumbersToArena(this.lastArenaBounds, this.getArenaBounds());
+        const previousArena = this.worldArenaBounds;
+        const viewportArena = this.getViewportArenaBounds();
+        const nextArena = {
+          x: viewportArena.x,
+          y: viewportArena.y,
+          width: viewportArena.width * WORLD_MAP_SCALE,
+          height: viewportArena.height * WORLD_MAP_SCALE,
+        };
+        this.remapWorldCoordinates(previousArena, nextArena);
+        this.worldArenaBounds = nextArena;
+        this.remapDamageNumbersToArena(previousArena, nextArena);
         this.clampAllEntitiesToArena();
         this.lastArenaBounds = this.getArenaBounds();
+        this.configureLevelCamera();
       }
       this.draw();
     });
@@ -532,6 +551,11 @@ class TitleScene extends Phaser.Scene {
   }
 
   getArenaBounds() {
+    if (this.levelActive && this.worldArenaBounds) return this.worldArenaBounds;
+    return this.getViewportArenaBounds();
+  }
+
+  getViewportArenaBounds() {
     const width = this.scale.width;
     const height = this.scale.height;
     const marginX = Phaser.Math.Clamp(width * 0.045, 22, 62);
@@ -556,9 +580,56 @@ class TitleScene extends Phaser.Scene {
     };
   }
 
+  configureLevelCamera() {
+    if (!this.levelActive || !this.worldArenaBounds) return;
+    const camera = this.cameras.main;
+    const worldWidth = this.worldArenaBounds.x * 2 + this.worldArenaBounds.width;
+    const worldHeight = this.worldArenaBounds.y * 2 + this.worldArenaBounds.height;
+    camera.setBounds(0, 0, worldWidth, worldHeight);
+    const viewportArena = this.getViewportArenaBounds();
+    camera.setViewport(viewportArena.x, viewportArena.y, viewportArena.width, viewportArena.height);
+    if (!this.cameraInitialized && this.entities[0]) {
+      camera.setScroll(
+        this.entities[0].x - (viewportArena.x + viewportArena.width / 2),
+        this.entities[0].y - (viewportArena.y + viewportArena.height / 2),
+      );
+      this.cameraInitialized = true;
+    }
+    this.syncDamageNumberElements();
+  }
+
+  updateLevelCamera(deltaSeconds) {
+    if (!this.levelActive || !this.entities[0]) return;
+    const camera = this.cameras.main;
+    const player = this.entities[0];
+    const viewportArena = this.getViewportArenaBounds();
+    const viewportX = viewportArena.x;
+    const viewportY = viewportArena.y;
+    const leftEdge = viewportArena.x + CAMERA_EDGE_BUFFER;
+    const rightEdge = viewportArena.x + viewportArena.width - CAMERA_EDGE_BUFFER;
+    const topEdge = viewportArena.y + CAMERA_EDGE_BUFFER;
+    const bottomEdge = viewportArena.y + viewportArena.height - CAMERA_EDGE_BUFFER;
+    const playerScreenX = player.x - camera.scrollX + viewportX;
+    const playerScreenY = player.y - camera.scrollY + viewportY;
+    let targetScrollX = camera.scrollX;
+    let targetScrollY = camera.scrollY;
+    if (playerScreenX < leftEdge) targetScrollX = player.x - leftEdge + viewportX;
+    if (playerScreenX > rightEdge) targetScrollX = player.x - rightEdge + viewportX;
+    if (playerScreenY < topEdge) targetScrollY = player.y - topEdge + viewportY;
+    if (playerScreenY > bottomEdge) targetScrollY = player.y - bottomEdge + viewportY;
+    const blend = 1 - Math.exp(-CAMERA_FOLLOW_SPEED * deltaSeconds);
+    camera.setScroll(
+      Phaser.Math.Linear(camera.scrollX, targetScrollX, blend),
+      Phaser.Math.Linear(camera.scrollY, targetScrollY, blend),
+    );
+    this.syncDamageNumberElements();
+  }
+
   startLevel() {
     this.clearDamageNumbers();
     this.levelActive = true;
+    this.worldArenaBounds = null;
+    this.cameraInitialized = false;
     this.moveTarget = null;
     this.collisionPairsLastFrame = 0;
     this.hits = 0;
@@ -612,7 +683,14 @@ class TitleScene extends Phaser.Scene {
     this.nextChargerSpawnMs = CHARGER_FIRST_SPAWN_MS;
     this.updateHitCounter();
     this.updateSurvivalTimerHud();
-    const arena = this.getArenaBounds();
+    const viewportArena = this.getViewportArenaBounds();
+    const arena = {
+      x: viewportArena.x,
+      y: viewportArena.y,
+      width: viewportArena.width * WORLD_MAP_SCALE,
+      height: viewportArena.height * WORLD_MAP_SCALE,
+    };
+    this.worldArenaBounds = arena;
     this.lastArenaBounds = arena;
     const point = (x, y) => ({
       x: arena.x + arena.width * x,
@@ -649,6 +727,8 @@ class TitleScene extends Phaser.Scene {
     this.updateWeaponHud();
     this.updateElectroHud();
     this.updateStatsHud();
+    this.configureLevelCamera();
+    this.updateLevelCamera(0);
     this.draw();
   }
 
@@ -731,6 +811,10 @@ class TitleScene extends Phaser.Scene {
   stopLevel() {
     this.clearDamageNumbers();
     this.levelActive = false;
+    this.worldArenaBounds = null;
+    this.cameraInitialized = false;
+    this.cameras.main.setViewport(0, 0, this.scale.width, this.scale.height);
+    this.cameras.main.setScroll(0, 0);
     this.entities = [];
     this.moveTarget = null;
     this.collisionPairsLastFrame = 0;
@@ -822,29 +906,63 @@ class TitleScene extends Phaser.Scene {
       this.gamepadMovement.y,
     );
 
+    let desiredVelocityX = 0;
+    let desiredVelocityY = 0;
+    let destinationDistance = null;
     if (keyboardLength > 0) {
       this.moveTarget = null;
-      player.vx = (horizontal / keyboardLength) * this.getPlayerSpeed();
-      player.vy = (vertical / keyboardLength) * this.getPlayerSpeed();
+      desiredVelocityX = (horizontal / keyboardLength) * this.getPlayerSpeed();
+      desiredVelocityY = (vertical / keyboardLength) * this.getPlayerSpeed();
     } else if (controllerLength > 0) {
       this.moveTarget = null;
-      player.vx = this.gamepadMovement.x * this.getPlayerSpeed();
-      player.vy = this.gamepadMovement.y * this.getPlayerSpeed();
+      desiredVelocityX = this.gamepadMovement.x * this.getPlayerSpeed();
+      desiredVelocityY = this.gamepadMovement.y * this.getPlayerSpeed();
     } else if (this.moveTarget) {
       const dx = this.moveTarget.x - player.x;
       const dy = this.moveTarget.y - player.y;
-      const distance = Math.hypot(dx, dy);
-      if (distance <= 5) {
-        this.moveTarget = null;
-        player.vx = 0;
-        player.vy = 0;
-      } else {
-        player.vx = (dx / distance) * this.getPlayerSpeed();
-        player.vy = (dy / distance) * this.getPlayerSpeed();
+      destinationDistance = Math.hypot(dx, dy);
+      if (destinationDistance > 0.001) {
+        const destinationSpeed = Math.min(
+          this.getPlayerSpeed(),
+          Math.sqrt(2 * PLAYER_DECELERATION * destinationDistance),
+        );
+        desiredVelocityX = (dx / destinationDistance) * destinationSpeed;
+        desiredVelocityY = (dy / destinationDistance) * destinationSpeed;
       }
+    }
+    if (destinationDistance !== null && destinationDistance <= 5) {
+      desiredVelocityX = 0;
+      desiredVelocityY = 0;
+    }
+    const desiredSpeed = Math.hypot(desiredVelocityX, desiredVelocityY);
+    const currentSpeed = Math.hypot(player.vx, player.vy);
+    const directionDot = player.vx * desiredVelocityX + player.vy * desiredVelocityY;
+    const directionIsChanging =
+      currentSpeed > 0.001 &&
+      desiredSpeed > 0.001 &&
+      directionDot < currentSpeed * desiredSpeed * 0.999;
+    const velocityRate =
+      desiredSpeed < currentSpeed || directionIsChanging
+        ? PLAYER_DECELERATION
+        : PLAYER_ACCELERATION;
+    const velocityDeltaX = desiredVelocityX - player.vx;
+    const velocityDeltaY = desiredVelocityY - player.vy;
+    const velocityDeltaLength = Math.hypot(velocityDeltaX, velocityDeltaY);
+    const maximumVelocityDelta = velocityRate * deltaSeconds;
+    if (velocityDeltaLength <= maximumVelocityDelta || velocityDeltaLength <= 0.001) {
+      player.vx = desiredVelocityX;
+      player.vy = desiredVelocityY;
     } else {
+      const velocityBlend = maximumVelocityDelta / velocityDeltaLength;
+      player.vx += velocityDeltaX * velocityBlend;
+      player.vy += velocityDeltaY * velocityBlend;
+    }
+    if (destinationDistance !== null && destinationDistance <= 5 && Math.hypot(player.vx, player.vy) <= 0.001) {
+      player.x = this.moveTarget.x;
+      player.y = this.moveTarget.y;
       player.vx = 0;
       player.vy = 0;
+      this.moveTarget = null;
     }
 
     for (const enemy of this.entities.slice(1)) {
@@ -889,6 +1007,17 @@ class TitleScene extends Phaser.Scene {
       const previousY = entity.y;
       entity.x += entity.vx * deltaSeconds;
       entity.y += entity.vy * deltaSeconds;
+      if (entity === player && this.moveTarget) {
+        const beforeDistance = Math.hypot(this.moveTarget.x - previousX, this.moveTarget.y - previousY);
+        const afterDistance = Math.hypot(this.moveTarget.x - entity.x, this.moveTarget.y - entity.y);
+        if (afterDistance > beforeDistance) {
+          entity.x = this.moveTarget.x;
+          entity.y = this.moveTarget.y;
+          entity.vx = 0;
+          entity.vy = 0;
+          this.moveTarget = null;
+        }
+      }
       const hitArenaBoundary = this.resolveArenaBoundary(entity);
       if (entity.enemyType === "charger" && entity.lungeActive) {
         const lungeStepDistance = Math.hypot(entity.x - previousX, entity.y - previousY);
@@ -921,6 +1050,7 @@ class TitleScene extends Phaser.Scene {
     this.updateElectroProjectiles(deltaSeconds);
     this.updateXpDrops(deltaMs);
     if (state.mode === "level" && player.health > 0) this.updateSurvivalTimer(deltaMs);
+    this.updateLevelCamera(deltaSeconds);
   }
 
   updateNaniteRehab(deltaMs) {
@@ -1421,8 +1551,6 @@ class TitleScene extends Phaser.Scene {
     const element = document.createElement("span");
     element.className = `damage-number${isPlayerDamage ? " player-damage" : ""}${critical ? " critical-damage" : ""}`;
     element.textContent = label;
-    element.style.left = `${numberX}px`;
-    element.style.top = `${numberY}px`;
     document.querySelector("#damage-number-layer").append(element);
     this.damageNumbers.push({
       element,
@@ -1434,6 +1562,7 @@ class TitleScene extends Phaser.Scene {
       color,
       lifeMs: DAMAGE_NUMBER_LIFETIME_MS,
     });
+    this.syncDamageNumberElements();
   }
 
   updateDamageNumbers(deltaMs) {
@@ -1445,14 +1574,22 @@ class TitleScene extends Phaser.Scene {
         continue;
       }
       number.y -= (32 * deltaMs) / 1000;
-      number.element.style.left = `${number.x}px`;
-      number.element.style.top = `${number.y}px`;
       number.element.style.opacity = String(
         Phaser.Math.Clamp(number.lifeMs / DAMAGE_NUMBER_LIFETIME_MS, 0, 1),
       );
       survivors.push(number);
     }
     this.damageNumbers = survivors;
+    this.syncDamageNumberElements();
+  }
+
+  syncDamageNumberElements() {
+    const camera = this.cameras.main;
+    const viewportArena = this.levelActive ? this.getViewportArenaBounds() : { x: 0, y: 0 };
+    for (const number of this.damageNumbers ?? []) {
+      number.element.style.left = `${number.x - camera.scrollX + viewportArena.x}px`;
+      number.element.style.top = `${number.y - camera.scrollY + viewportArena.y}px`;
+    }
   }
 
   remapDamageNumbersToArena(previousArena, nextArena) {
@@ -1464,6 +1601,49 @@ class TitleScene extends Phaser.Scene {
       number.y = nextArena.y + normalizedY * nextArena.height;
       number.element.style.left = `${number.x}px`;
       number.element.style.top = `${number.y}px`;
+    }
+  }
+
+  remapWorldCoordinates(previousArena, nextArena) {
+    if (!previousArena || !nextArena || previousArena.width <= 0 || previousArena.height <= 0) return;
+    const remap = (item) => {
+      item.x = nextArena.x + ((item.x - previousArena.x) / previousArena.width) * nextArena.width;
+      item.y = nextArena.y + ((item.y - previousArena.y) / previousArena.height) * nextArena.height;
+    };
+    for (const entity of this.entities) remap(entity);
+    const remapProjectile = (projectile) => {
+      remap(projectile);
+      if (Number.isFinite(projectile.previousX) && Number.isFinite(projectile.previousY)) {
+        const previous = { x: projectile.previousX, y: projectile.previousY };
+        remap(previous);
+        projectile.previousX = previous.x;
+        projectile.previousY = previous.y;
+      }
+    };
+    for (const projectile of this.projectiles) remapProjectile(projectile);
+    for (const projectile of this.electroProjectiles) remapProjectile(projectile);
+    for (const drop of this.xpDrops) remap(drop);
+    for (const chain of this.pendingElectroChains) remap(chain);
+    if (this.moveTarget) remap(this.moveTarget);
+    for (const arc of this.electroArcs) {
+      const from = { x: arc.fromX, y: arc.fromY };
+      const to = { x: arc.toX, y: arc.toY };
+      remap(from);
+      remap(to);
+      arc.fromX = from.x;
+      arc.fromY = from.y;
+      arc.toX = to.x;
+      arc.toY = to.y;
+    }
+    for (const burst of this.projectileImpactBursts) {
+      const from = { x: burst.fromX, y: burst.fromY };
+      const to = { x: burst.toX, y: burst.toY };
+      remap(from);
+      remap(to);
+      burst.fromX = from.x;
+      burst.fromY = from.y;
+      burst.toX = to.x;
+      burst.toY = to.y;
     }
   }
 
@@ -2558,6 +2738,16 @@ window.render_game_to_text = () => {
             remainingMs: roundCoordinate(Math.max(0, SURVIVAL_DURATION_MS - scene.survivalElapsedMs)),
           },
           arena: scene.getArenaBounds(),
+          worldMap: {
+            scale: WORLD_MAP_SCALE,
+            cameraScroll: {
+              x: roundCoordinate(scene.cameras.main.scrollX),
+              y: roundCoordinate(scene.cameras.main.scrollY),
+            },
+            viewportWidth: scene.scale.width,
+            viewportHeight: scene.scale.height,
+            viewportArena: scene.getViewportArenaBounds(),
+          },
           player: scene.entities[0]
             ? {
                 x: roundCoordinate(scene.entities[0].x),
@@ -2567,6 +2757,10 @@ window.render_game_to_text = () => {
                 health: scene.entities[0].health,
                 maxHealth: scene.entities[0].maxHealth,
                 movementSpeed: roundCoordinate(scene.getPlayerSpeed()),
+                movementTuning: {
+                  acceleration: PLAYER_ACCELERATION,
+                  deceleration: PLAYER_DECELERATION,
+                },
                 naniteRehab: {
                   unlocked: scene.upgradeRanks.naniteRehab > 0,
                   healingPerTick: NANITE_REHAB_HEALING,
@@ -2866,12 +3060,16 @@ window.render_game_to_text = () => {
   });
 };
 
-window.advanceTime = (ms) => {
+window.advanceTime = (ms, requestedFrameMs = 1000 / 60) => {
   const scene = game.scene.getScene("title");
   if (!scene?.scene.isActive()) return;
-  const frameMs = 1000 / 60;
-  const steps = Math.max(1, Math.round(ms / frameMs));
-  for (let step = 0; step < steps; step += 1) scene.update(0, frameMs);
+  const frameMs = Phaser.Math.Clamp(Number(requestedFrameMs) || 1000 / 60, 1, 1000 / 30);
+  let remainingMs = Math.max(0, ms);
+  while (remainingMs > 0) {
+    const stepMs = Math.min(frameMs, remainingMs);
+    scene.update(0, stepMs);
+    remainingMs -= stepMs;
+  }
 };
 
 if (import.meta.env.DEV) {
@@ -2934,6 +3132,23 @@ if (import.meta.env.DEV) {
       charger.vy = 0;
       charger.angle = Math.PI;
       return charger.id;
+    },
+    spawnCircleNearPlayer(distance = 200) {
+      const scene = game.scene.getScene("title");
+      const player = scene.entities[0];
+      if (!scene.levelActive || !player) return null;
+      scene.createEnemyAtNormalizedPosition(0.5, 0.5, false, "circle");
+      const enemy = scene.entities.at(-1);
+      const arena = scene.getArenaBounds();
+      enemy.x = Phaser.Math.Clamp(
+        player.x + distance,
+        arena.x + enemy.radius,
+        arena.x + arena.width - enemy.radius,
+      );
+      enemy.y = player.y;
+      enemy.vx = -enemy.speed;
+      enemy.vy = 0;
+      return enemy.id;
     },
     setPlayerPosition(x, y) {
       const scene = game.scene.getScene("title");
