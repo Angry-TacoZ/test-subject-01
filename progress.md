@@ -133,4 +133,6 @@ One title, one short system message, and three primary actions. No gameplay or p
 
 ## Next
 
+- Added a repository-local `npm run verify` command that builds the production bundle and runs Playwright smoke checks for desktop pointer and mobile touch destination movement. The verifier is non-destructive, does not deploy or call paid services, and uses exit code 0 for pass, 1 for failure, and 2 for not assessed/dry run. GitHub Actions now runs the same verifier before its existing Pages deployment.
+- Keyboard and controller remain existing game capabilities but are intentionally outside this first smoke-verifier baseline; add them only when James requests that expanded coverage.
 - Await the user's next single requested change.
