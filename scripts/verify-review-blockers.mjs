@@ -38,7 +38,7 @@ async function waitForPreview() {
     if (previewOutput.includes(`Port ${port} is already in use`)) {
       throw new Error(`The dedicated preview port ${port} is already in use.`);
     }
-    if (previewOutput.includes("Local:")) return;
+    if (previewOutput.includes("ready in")) return;
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   throw new Error(`Timed out waiting for ${url}.`);
