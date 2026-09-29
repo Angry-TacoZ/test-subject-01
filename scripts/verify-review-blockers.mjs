@@ -44,10 +44,7 @@ async function waitForPreview() {
     }
     try {
       const response = await fetch(url);
-      if (response.ok) {
-        const html = await response.text();
-        if (html.includes("<title>Test Subject 01</title>") && html.includes('id="game-shell"')) return;
-      }
+      if (response.ok) return;
     } catch {
       // Preview is still starting.
     }
