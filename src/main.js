@@ -303,6 +303,7 @@ class TitleScene extends Phaser.Scene {
     this.aimActive = false;
     this.aimDirection = { x: 1, y: 0 };
     this.aimSource = null;
+    this.mouseAimScreenPosition = null;
     this.mouseAimTarget = null;
     this.shotsFired = 0;
     this.enemiesDestroyed = 0;
@@ -377,8 +378,7 @@ class TitleScene extends Phaser.Scene {
     this.input.on("pointermove", (pointer) => {
       if (!this.levelActive || state.mode !== "level") return;
       if (pointer.wasTouch || pointer.event?.pointerType === "touch") return;
-      const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-      this.setAimToward(worldPoint.x, worldPoint.y, "mouse");
+      this.setMouseAimScreenPosition(pointer.x, pointer.y);
     });
     this.input.on("pointerdown", (pointer) => {
       if (!this.levelActive || state.mode !== "level") return;
@@ -387,8 +387,7 @@ class TitleScene extends Phaser.Scene {
         : "mouse";
       const button = pointer.event?.button ?? 0;
       if (pointerType !== "touch" && button === 0) {
-        const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
-        this.setAimToward(worldPoint.x, worldPoint.y, "mouse");
+        this.setMouseAimScreenPosition(pointer.x, pointer.y);
         this.tryFire();
         return;
       }
@@ -590,8 +589,8 @@ class TitleScene extends Phaser.Scene {
     camera.setViewport(viewportArena.x, viewportArena.y, viewportArena.width, viewportArena.height);
     if (!this.cameraInitialized && this.entities[0]) {
       camera.setScroll(
-        this.entities[0].x - (viewportArena.x + viewportArena.width / 2),
-        this.entities[0].y - (viewportArena.y + viewportArena.height / 2),
+        this.entities[0].x - viewportArena.width / 2,
+        this.entities[0].y - viewportArena.height / 2,
       );
       this.cameraInitialized = true;
     }
@@ -661,6 +660,7 @@ class TitleScene extends Phaser.Scene {
     this.aimActive = false;
     this.aimDirection = { x: 1, y: 0 };
     this.aimSource = null;
+    this.mouseAimScreenPosition = null;
     this.mouseAimTarget = null;
     this.shotsFired = 0;
     this.enemiesDestroyed = 0;
@@ -845,6 +845,7 @@ class TitleScene extends Phaser.Scene {
     this.weaponReloadMs = 0;
     this.aimActive = false;
     this.aimSource = null;
+    this.mouseAimScreenPosition = null;
     this.mouseAimTarget = null;
     this.xpDrops = [];
     this.playerXp = 0;
@@ -876,9 +877,7 @@ class TitleScene extends Phaser.Scene {
     this.updatePendingElectroShots(deltaMs);
     this.updatePendingElectroChains(deltaMs);
     this.updateEnemySpawning(deltaMs);
-    if (this.aimSource === "mouse" && this.mouseAimTarget) {
-      this.setAimToward(this.mouseAimTarget.x, this.mouseAimTarget.y, "mouse");
-    }
+    this.updateMouseAimFromScreen();
     const mobileAutoFire = usesMobileTouchInterface() && !state.gamepadConnected;
     const mobileAutoTarget = mobileAutoFire && this.updateMobileAutoAim();
     if (!mobileAutoFire || mobileAutoTarget) this.tryFireElectroTherapy();
@@ -1051,6 +1050,7 @@ class TitleScene extends Phaser.Scene {
     this.updateXpDrops(deltaMs);
     if (state.mode === "level" && player.health > 0) this.updateSurvivalTimer(deltaMs);
     this.updateLevelCamera(deltaSeconds);
+    this.updateMouseAimFromScreen();
   }
 
   updateNaniteRehab(deltaMs) {
@@ -1095,14 +1095,25 @@ class TitleScene extends Phaser.Scene {
     this.survivalTimerElement.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   }
 
-  setAimToward(x, y, source) {
+  setMouseAimScreenPosition(x, y) {
+    this.mouseAimScreenPosition = { x, y };
     const player = this.entities[0];
     if (!player) return;
-    const dx = x - player.x;
-    const dy = y - player.y;
-    if (Math.hypot(dx, dy) < 0.001) return;
-    this.setAimDirection(dx, dy, source);
-    if (source === "mouse") this.mouseAimTarget = { x, y };
+    const worldPoint = this.cameras.main.getWorldPoint(x, y);
+    this.mouseAimTarget = { x: worldPoint.x, y: worldPoint.y };
+    this.setAimDirection(worldPoint.x - player.x, worldPoint.y - player.y, "mouse");
+  }
+
+  updateMouseAimFromScreen() {
+    if (this.aimSource !== "mouse" || !this.mouseAimScreenPosition) return;
+    const player = this.entities[0];
+    if (!player) return;
+    const worldPoint = this.cameras.main.getWorldPoint(
+      this.mouseAimScreenPosition.x,
+      this.mouseAimScreenPosition.y,
+    );
+    this.mouseAimTarget = { x: worldPoint.x, y: worldPoint.y };
+    this.setAimDirection(worldPoint.x - player.x, worldPoint.y - player.y, "mouse");
   }
 
   updateMobileAutoAim() {
@@ -1123,11 +1134,15 @@ class TitleScene extends Phaser.Scene {
     this.aimDirection = { x: x / length, y: y / length };
     this.aimActive = true;
     this.aimSource = source;
-    if (source !== "mouse") this.mouseAimTarget = null;
+    if (source !== "mouse") {
+      this.mouseAimScreenPosition = null;
+      this.mouseAimTarget = null;
+    }
     this.updateWeaponHud();
   }
 
   tryFire() {
+    this.updateMouseAimFromScreen();
     if (
       !this.levelActive ||
       state.mode !== "level" ||
@@ -1585,10 +1600,19 @@ class TitleScene extends Phaser.Scene {
 
   syncDamageNumberElements() {
     const camera = this.cameras.main;
-    const viewportArena = this.levelActive ? this.getViewportArenaBounds() : { x: 0, y: 0 };
+    const viewportArena = this.levelActive
+      ? this.getViewportArenaBounds()
+      : { x: 0, y: 0, width: this.scale.width, height: this.scale.height };
+    const layer = document.querySelector("#damage-number-layer");
+    if (layer) {
+      layer.style.left = `${viewportArena.x}px`;
+      layer.style.top = `${viewportArena.y}px`;
+      layer.style.width = `${viewportArena.width}px`;
+      layer.style.height = `${viewportArena.height}px`;
+    }
     for (const number of this.damageNumbers ?? []) {
-      number.element.style.left = `${number.x - camera.scrollX + viewportArena.x}px`;
-      number.element.style.top = `${number.y - camera.scrollY + viewportArena.y}px`;
+      number.element.style.left = `${number.x - camera.scrollX}px`;
+      number.element.style.top = `${number.y - camera.scrollY}px`;
     }
   }
 
@@ -2748,6 +2772,20 @@ window.render_game_to_text = () => {
             viewportHeight: scene.scale.height,
             viewportArena: scene.getViewportArenaBounds(),
           },
+          mouseAim: scene.mouseAimScreenPosition
+            ? {
+                screen: {
+                  x: roundCoordinate(scene.mouseAimScreenPosition.x),
+                  y: roundCoordinate(scene.mouseAimScreenPosition.y),
+                },
+                world: scene.mouseAimTarget
+                  ? {
+                      x: roundCoordinate(scene.mouseAimTarget.x),
+                      y: roundCoordinate(scene.mouseAimTarget.y),
+                    }
+                  : null,
+              }
+            : null,
           player: scene.entities[0]
             ? {
                 x: roundCoordinate(scene.entities[0].x),
@@ -3074,6 +3112,12 @@ window.advanceTime = (ms, requestedFrameMs = 1000 / 60) => {
 
 if (import.meta.env.DEV) {
   window.__testSubject01 = {
+    spawnDamageNumber(x, y, damage = 1, target = "enemy", critical = false) {
+      const scene = game.scene.getScene("title");
+      if (!scene.levelActive || ![x, y, damage].every(Number.isFinite)) return false;
+      scene.spawnDamageNumber(x, y, damage, target, critical);
+      return true;
+    },
     forceNextCritical(critical = true) {
       const scene = game.scene.getScene("title");
       if (!scene.levelActive) return false;

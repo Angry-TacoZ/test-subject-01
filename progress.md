@@ -133,4 +133,6 @@ One title, one short system message, and three primary actions. No gameplay or p
 
 ## Next
 
-- Await the user's next single requested change.
+- Addressed external PR #8 re-review blockers: mouse aim now retains canvas-screen coordinates and recomputes its current world target as the camera scrolls; initial camera scroll centers against viewport width/height without subtracting viewport origin twice; damage-number DOM clipping and coordinates are relative to the active gameplay viewport.
+- Added `npm run test:review`, a repository-local Playwright regression check for stationary-cursor aim and projectile direction, desktop/phone initial camera centering, and damage-number clipping at viewport edges through camera scroll, resize, and phone fullscreen. GitHub Pages CI runs it after the production build.
+- Full existing browser regression suite, the new targeted checks, project verifier, build, and predeploy secret/API exposure scan passed locally; external review and GitHub CI confirmation remain follow-ups.
