@@ -8,6 +8,7 @@ const BASE_WEAPON_RELOAD_MS = 1500;
 const BASE_PLAYER_SPEED = 230;
 const PLAYER_ACCELERATION = 1400;
 const PLAYER_DECELERATION = 1800;
+const DESTINATION_ARRIVAL_RADIUS = 5;
 const WORLD_MAP_SCALE = 2;
 const CAMERA_FOLLOW_SPEED = 7;
 const CAMERA_EDGE_BUFFER = 72;
@@ -929,7 +930,7 @@ class TitleScene extends Phaser.Scene {
         desiredVelocityY = (dy / destinationDistance) * destinationSpeed;
       }
     }
-    if (destinationDistance !== null && destinationDistance <= 5) {
+    if (destinationDistance !== null && destinationDistance <= DESTINATION_ARRIVAL_RADIUS) {
       desiredVelocityX = 0;
       desiredVelocityY = 0;
     }
@@ -956,7 +957,11 @@ class TitleScene extends Phaser.Scene {
       player.vx += velocityDeltaX * velocityBlend;
       player.vy += velocityDeltaY * velocityBlend;
     }
-    if (destinationDistance !== null && destinationDistance <= 5 && Math.hypot(player.vx, player.vy) <= 0.001) {
+    if (
+      destinationDistance !== null &&
+      destinationDistance <= DESTINATION_ARRIVAL_RADIUS &&
+      Math.hypot(player.vx, player.vy) <= 0.001
+    ) {
       player.x = this.moveTarget.x;
       player.y = this.moveTarget.y;
       player.vx = 0;
@@ -1007,14 +1012,27 @@ class TitleScene extends Phaser.Scene {
       entity.x += entity.vx * deltaSeconds;
       entity.y += entity.vy * deltaSeconds;
       if (entity === player && this.moveTarget) {
-        const beforeDistance = Math.hypot(this.moveTarget.x - previousX, this.moveTarget.y - previousY);
-        const afterDistance = Math.hypot(this.moveTarget.x - entity.x, this.moveTarget.y - entity.y);
-        if (afterDistance > beforeDistance) {
-          entity.x = this.moveTarget.x;
-          entity.y = this.moveTarget.y;
-          entity.vx = 0;
-          entity.vy = 0;
-          this.moveTarget = null;
+        const stepX = entity.x - previousX;
+        const stepY = entity.y - previousY;
+        const stepLengthSquared = stepX * stepX + stepY * stepY;
+        if (stepLengthSquared > 0) {
+          const targetOffsetX = this.moveTarget.x - previousX;
+          const targetOffsetY = this.moveTarget.y - previousY;
+          const projection = (targetOffsetX * stepX + targetOffsetY * stepY) / stepLengthSquared;
+          if (projection >= 0 && projection <= 1) {
+            const closestX = previousX + stepX * projection;
+            const closestY = previousY + stepY * projection;
+            if (
+              Math.hypot(this.moveTarget.x - closestX, this.moveTarget.y - closestY) <=
+              DESTINATION_ARRIVAL_RADIUS
+            ) {
+              entity.x = this.moveTarget.x;
+              entity.y = this.moveTarget.y;
+              entity.vx = 0;
+              entity.vy = 0;
+              this.moveTarget = null;
+            }
+          }
         }
       }
       const hitArenaBoundary = this.resolveArenaBoundary(entity);
