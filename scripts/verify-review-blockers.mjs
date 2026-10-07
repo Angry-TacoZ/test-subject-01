@@ -333,6 +333,25 @@ async function runDesktop(browser) {
   assert.ok(state.level.worldMap.cameraScroll.y > cameraBefore.y + 10, "Camera did not scroll vertically while damage labels were alive");
   await assertDamageClip(page, "Desktop after camera scroll");
   await page.locator("#level-options-button").click();
+  await page.setViewportSize({ width: 640, height: 720 });
+  await page.waitForTimeout(80);
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.waitForTimeout(80);
+  state = await readState(page);
+  const resizedViewport = state.level.worldMap.viewportArena;
+  const resizedScroll = state.level.worldMap.cameraScroll;
+  const resizedPlayerScreen = {
+    x: state.level.player.x - resizedScroll.x,
+    y: state.level.player.y - resizedScroll.y,
+  };
+  assert.ok(
+    resizedPlayerScreen.x >= state.level.player.radius && resizedPlayerScreen.x <= resizedViewport.width - state.level.player.radius,
+    `Desktop player must remain visible immediately after a paused 640→1280 resize; screenX=${resizedPlayerScreen.x.toFixed(2)}, viewportWidth=${resizedViewport.width}`,
+  );
+  assert.ok(
+    resizedPlayerScreen.y >= state.level.player.radius && resizedPlayerScreen.y <= resizedViewport.height - state.level.player.radius,
+    `Desktop player must remain visible immediately after a paused 640→1280 resize; screenY=${resizedPlayerScreen.y.toFixed(2)}, viewportHeight=${resizedViewport.height}`,
+  );
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.waitForTimeout(80);
   state = await readState(page);
