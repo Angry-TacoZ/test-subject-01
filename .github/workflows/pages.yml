@@ -29,6 +29,10 @@ jobs:
         run: npm ci
       - name: Build game
         run: npm run build
+      - name: Install Chromium for review regressions
+        run: npx playwright install --with-deps chromium
+      - name: Verify camera and damage overlay regressions
+        run: npm run test:review
       - name: Configure Pages
         uses: actions/configure-pages@v6
       - name: Upload built game
