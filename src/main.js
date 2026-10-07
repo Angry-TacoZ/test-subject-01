@@ -424,7 +424,7 @@ class TitleScene extends Phaser.Scene {
         this.remapDamageNumbersToArena(previousArena, nextArena);
         this.clampAllEntitiesToArena();
         this.lastArenaBounds = this.getArenaBounds();
-        this.configureLevelCamera();
+        this.configureLevelCamera({ reframe: true });
       }
       this.draw();
     });
@@ -580,7 +580,7 @@ class TitleScene extends Phaser.Scene {
     };
   }
 
-  configureLevelCamera() {
+  configureLevelCamera({ reframe = false } = {}) {
     if (!this.levelActive || !this.worldArenaBounds) return;
     const camera = this.cameras.main;
     const worldWidth = this.worldArenaBounds.x * 2 + this.worldArenaBounds.width;
@@ -588,10 +588,11 @@ class TitleScene extends Phaser.Scene {
     camera.setBounds(0, 0, worldWidth, worldHeight);
     const viewportArena = this.getViewportArenaBounds();
     camera.setViewport(viewportArena.x, viewportArena.y, viewportArena.width, viewportArena.height);
-    if (!this.cameraInitialized && this.entities[0]) {
+    if ((!this.cameraInitialized || reframe) && this.entities[0]) {
+      const player = this.entities[0];
       camera.setScroll(
-        this.entities[0].x - viewportArena.width / 2,
-        this.entities[0].y - viewportArena.height / 2,
+        Phaser.Math.Clamp(player.x - viewportArena.width / 2, 0, Math.max(0, worldWidth - viewportArena.width)),
+        Phaser.Math.Clamp(player.y - viewportArena.height / 2, 0, Math.max(0, worldHeight - viewportArena.height)),
       );
       this.cameraInitialized = true;
     }
