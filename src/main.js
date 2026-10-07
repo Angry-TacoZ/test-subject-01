@@ -3130,6 +3130,16 @@ window.advanceTime = (ms, requestedFrameMs = 1000 / 60) => {
 
 if (import.meta.env.DEV) {
   window.__testSubject01 = {
+    pauseRealtime() {
+      if (!game.loop.running) return false;
+      game.loop.sleep();
+      return true;
+    },
+    resumeRealtime() {
+      if (game.loop.running) return false;
+      game.loop.wake(true);
+      return true;
+    },
     spawnDamageNumber(x, y, damage = 1, target = "enemy", critical = false) {
       const scene = game.scene.getScene("title");
       if (!scene.levelActive || ![x, y, damage].every(Number.isFinite)) return false;
@@ -3221,6 +3231,17 @@ if (import.meta.env.DEV) {
       player.y = Phaser.Math.Clamp(y, arena.y + player.radius, arena.y + arena.height - player.radius);
       player.vx = 0;
       player.vy = 0;
+      return true;
+    },
+    setPlayerVelocity(vx, vy) {
+      const scene = game.scene.getScene("title");
+      const player = scene.entities[0];
+      if (!scene.levelActive || !player || ![vx, vy].every(Number.isFinite)) return false;
+      const speed = Math.hypot(vx, vy);
+      const maximumSpeed = scene.getPlayerSpeed();
+      const scale = speed > maximumSpeed ? maximumSpeed / speed : 1;
+      player.vx = vx * scale;
+      player.vy = vy * scale;
       return true;
     },
     clearEnemies() {

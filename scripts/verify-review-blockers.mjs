@@ -106,6 +106,7 @@ async function assertDamageClip(page, label) {
 async function runDestinationRetarget(page, inputMethod, direction, offset) {
   await startLevel(page);
   await page.evaluate(() => {
+    window.__testSubject01.pauseRealtime();
     const state = JSON.parse(window.render_game_to_text());
     const viewport = state.level.worldMap.viewportArena;
     const scroll = state.level.worldMap.cameraScroll;
@@ -117,30 +118,29 @@ async function runDestinationRetarget(page, inputMethod, direction, offset) {
     );
   });
 
-  await page.keyboard.down("ArrowRight");
-  await step(page, 1000);
-  await page.keyboard.up("ArrowRight");
   await page.evaluate(() => {
     window.__testSubject01.clearEnemies();
     window.__testSubject01.setSpawnElapsedMs(0);
   });
 
-  const moving = await readState(page);
-  assert.ok(
-    moving.level.player.vx > 200,
-    `${inputMethod} ${direction}: player did not reach full rightward speed; mode=${moving.mode}`,
-  );
-  const arena = moving.level.arena;
-  const player = moving.level.player;
+  const beforeRetarget = await readState(page);
+  const arena = beforeRetarget.level.arena;
+  const player = beforeRetarget.level.player;
   const requestedDestination = {
     x: clampValue(player.x + offset.x, arena.x + player.radius, arena.x + arena.width - player.radius),
     y: clampValue(player.y + offset.y, arena.y + player.radius, arena.y + arena.height - player.radius),
   };
   const position = {
-    x: requestedDestination.x - moving.level.worldMap.cameraScroll.x + moving.level.worldMap.viewportArena.x,
-    y: requestedDestination.y - moving.level.worldMap.cameraScroll.y + moving.level.worldMap.viewportArena.y,
+    x: requestedDestination.x - beforeRetarget.level.worldMap.cameraScroll.x + beforeRetarget.level.worldMap.viewportArena.x,
+    y: requestedDestination.y - beforeRetarget.level.worldMap.cameraScroll.y + beforeRetarget.level.worldMap.viewportArena.y,
   };
   const canvas = page.locator("#game-canvas canvas");
+  await page.evaluate(() => {
+    const canvas = document.querySelector("#game-canvas canvas");
+    canvas.addEventListener("pointerdown", () => {
+      canvas.dataset.retargetVelocitySeeded = String(window.__testSubject01.setPlayerVelocity(230, 0));
+    }, { capture: true, once: true });
+  });
   if (inputMethod === "touch") {
     await canvas.tap({ position });
   } else {
@@ -149,19 +149,29 @@ async function runDestinationRetarget(page, inputMethod, direction, offset) {
 
   let state = await readState(page);
   assert.ok(state.level.moveTarget, `${inputMethod} ${direction}: destination input was not accepted`);
+  const velocitySeeded = await page.locator("#game-canvas canvas").getAttribute("data-retarget-velocity-seeded");
+  assert.equal(velocitySeeded, "true", `${inputMethod} ${direction}: retarget input did not seed high-speed motion`);
+  const inputFrameDistance = Math.hypot(
+    state.level.player.x - beforeRetarget.level.player.x,
+    state.level.player.y - beforeRetarget.level.player.y,
+  );
+  assert.ok(
+    inputFrameDistance <= 10,
+    `${inputMethod} ${direction}: pointer input caused a ${inputFrameDistance.toFixed(2)} px jump before the first deterministic step`,
+  );
   const destination = state.level.moveTarget;
   if (direction === "reverse") {
     assert.ok(
-      destination.x < moving.level.player.x - 50,
+      destination.x < beforeRetarget.level.player.x - 50,
       `${inputMethod} reverse: target was not behind the moving player`,
     );
   } else {
     assert.ok(
-      destination.y > moving.level.player.y + 50,
+      destination.y > beforeRetarget.level.player.y + 50,
       `${inputMethod} sideways: target was not perpendicular to rightward motion`,
     );
     assert.ok(
-      Math.abs(destination.x - moving.level.player.x) < 50,
+      Math.abs(destination.x - beforeRetarget.level.player.x) < 50,
       `${inputMethod} sideways: target was not primarily perpendicular`,
     );
   }
@@ -213,6 +223,8 @@ async function runDestinationRetarget(page, inputMethod, direction, offset) {
     trajectory.distanceFromDestination <= 1.5,
     `${inputMethod} ${direction}: player did not stop at the destination; state ${JSON.stringify(trajectory)}`,
   );
+  await page.evaluate(() => window.__testSubject01.resumeRealtime());
+  await page.waitForTimeout(50);
   return { inputMethod, direction, firstStep, maximumFrameDistance: trajectory.maximumFrameDistance };
 }
 
