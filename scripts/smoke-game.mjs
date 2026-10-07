@@ -5,7 +5,12 @@ import process from "node:process";
 import { chromium } from "playwright";
 
 const root = process.cwd();
-const port = 4173;
+const configuredPort = Number(process.env.TEST_SUBJECT_SMOKE_PORT ?? 4173);
+assert(
+  Number.isInteger(configuredPort) && configuredPort >= 1 && configuredPort <= 65_535,
+  "TEST_SUBJECT_SMOKE_PORT must be a valid TCP port.",
+);
+const port = configuredPort;
 const basePath = "/test-subject-01/";
 const url = `http://127.0.0.1:${port}${basePath}`;
 const outputDirectory = path.join(root, "output", "playwright");
@@ -22,16 +27,31 @@ function distance(first, second) {
 async function waitForPreview(server) {
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
-    if (server.exitCode !== null) throw new Error("Vite preview exited before the smoke check started.");
-    try {
-      const response = await fetch(url);
-      if (response.ok) return;
-    } catch {
-      // The preview server is still starting.
+    if (server.exitCode !== null || server.signalCode !== null) {
+      throw new Error("Vite preview exited before the smoke check started.");
+    }
+    const outputWithoutAnsi = previewOutput.replace(/\u001b\[[0-9;]*m/g, "");
+    if (outputWithoutAnsi.includes(url)) {
+      if (server.exitCode !== null || server.signalCode !== null) {
+        throw new Error("Vite preview exited during startup.");
+      }
+      try {
+        const response = await fetch(url);
+        if (response.ok) return;
+      } catch {
+        // The owned preview is ready but its HTTP listener is still settling.
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   throw new Error(`Timed out waiting for ${url}.`);
+}
+
+function assertPreviewRunning(server, phase) {
+  if (server.exitCode !== null || server.signalCode !== null) {
+    const result = server.signalCode ? `signal ${server.signalCode}` : `code ${server.exitCode}`;
+    throw new Error(`Vite preview exited ${phase} with ${result}.`);
+  }
 }
 
 async function gameState(page) {
@@ -85,12 +105,15 @@ async function runScenario(browser, name, contextOptions) {
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   try {
+    assertPreviewRunning(preview, `before ${name} navigation`);
     await page.goto(url, { waitUntil: "networkidle" });
+    assertPreviewRunning(preview, `during ${name} navigation`);
     await page.waitForFunction(() => typeof window.render_game_to_text === "function");
     await page.getByRole("button", { name: /start/i }).waitFor();
     await startLevel(page);
     await moveWithPointer(page, name);
     await page.screenshot({ path: path.join(outputDirectory, `${name}-smoke.png`), fullPage: true });
+    assertPreviewRunning(preview, `after ${name} smoke checks`);
     assert(pageErrors.length === 0, `${name}: browser errors: ${pageErrors.join(" | ")}`);
   } finally {
     await context.close();
@@ -131,6 +154,7 @@ try {
     await browser.close();
   }
 
+  assertPreviewRunning(preview, "before reporting success");
   console.log("Smoke checks passed: desktop pointer and mobile touch movement.");
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);

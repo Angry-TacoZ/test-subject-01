@@ -18,6 +18,11 @@ const buildCheck = isWindows
 const checks = [
   buildCheck,
   {
+    name: "smoke preview port-collision regression",
+    command: process.execPath,
+    args: ["scripts/test-smoke-port-collision.mjs"],
+  },
+  {
     name: "desktop and mobile browser smoke",
     command: process.execPath,
     args: ["scripts/smoke-game.mjs"],

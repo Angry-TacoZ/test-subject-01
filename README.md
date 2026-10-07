@@ -139,7 +139,7 @@ Run the repository-local verifier before opening a pull request or claiming a su
 npm.cmd run verify
 ```
 
-It builds the production bundle and runs Playwright smoke checks for desktop pointer and mobile touch movement. `npm.cmd run verify:dry` prints the planned checks and exits as not assessed; it is not verification evidence.
+It builds the production bundle, checks that smoke tests fail rather than silently using an already-running preview, and runs Playwright checks for desktop pointer and mobile touch movement. `npm.cmd run verify:dry` prints the planned checks and exits as not assessed; it is not verification evidence.
 
 ## Soundtrack provenance
 
