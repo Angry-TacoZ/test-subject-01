@@ -27,10 +27,12 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
-      - name: Install Chromium for browser smoke checks
+      - name: Install Chromium for browser verification
         run: npx playwright install --with-deps chromium
-      - name: Verify game
+      - name: Run canonical project verifier
         run: npm run verify
+      - name: Verify camera and damage overlay regressions
+        run: npm run test:review
       - name: Configure Pages
         uses: actions/configure-pages@v6
       - name: Upload built game

@@ -9,7 +9,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "smoke": "node scripts/smoke-game.mjs",
     "verify": "node scripts/verify-project.mjs",
-    "verify:dry": "node scripts/verify-project.mjs --dry-run"
+    "verify:dry": "node scripts/verify-project.mjs --dry-run",
+    "test:review": "node scripts/verify-review-blockers.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0"
