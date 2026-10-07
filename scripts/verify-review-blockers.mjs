@@ -103,6 +103,123 @@ async function assertDamageClip(page, label) {
   return measurement;
 }
 
+async function runDestinationRetarget(page, inputMethod, direction, offset) {
+  await startLevel(page);
+  await page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text());
+    const viewport = state.level.worldMap.viewportArena;
+    const scroll = state.level.worldMap.cameraScroll;
+    window.__testSubject01.clearEnemies();
+    window.__testSubject01.setSpawnElapsedMs(0);
+    window.__testSubject01.setPlayerPosition(
+      scroll.x + viewport.width / 2,
+      scroll.y + viewport.height / 2,
+    );
+  });
+
+  await page.keyboard.down("ArrowRight");
+  await step(page, 1000);
+  await page.keyboard.up("ArrowRight");
+  await page.evaluate(() => {
+    window.__testSubject01.clearEnemies();
+    window.__testSubject01.setSpawnElapsedMs(0);
+  });
+
+  const moving = await readState(page);
+  assert.ok(
+    moving.level.player.vx > 200,
+    `${inputMethod} ${direction}: player did not reach full rightward speed; mode=${moving.mode}`,
+  );
+  const arena = moving.level.arena;
+  const player = moving.level.player;
+  const requestedDestination = {
+    x: clampValue(player.x + offset.x, arena.x + player.radius, arena.x + arena.width - player.radius),
+    y: clampValue(player.y + offset.y, arena.y + player.radius, arena.y + arena.height - player.radius),
+  };
+  const position = {
+    x: requestedDestination.x - moving.level.worldMap.cameraScroll.x + moving.level.worldMap.viewportArena.x,
+    y: requestedDestination.y - moving.level.worldMap.cameraScroll.y + moving.level.worldMap.viewportArena.y,
+  };
+  const canvas = page.locator("#game-canvas canvas");
+  if (inputMethod === "touch") {
+    await canvas.tap({ position });
+  } else {
+    await canvas.click({ button: "right", position });
+  }
+
+  let state = await readState(page);
+  assert.ok(state.level.moveTarget, `${inputMethod} ${direction}: destination input was not accepted`);
+  const destination = state.level.moveTarget;
+  if (direction === "reverse") {
+    assert.ok(
+      destination.x < moving.level.player.x - 50,
+      `${inputMethod} reverse: target was not behind the moving player`,
+    );
+  } else {
+    assert.ok(
+      destination.y > moving.level.player.y + 50,
+      `${inputMethod} sideways: target was not perpendicular to rightward motion`,
+    );
+    assert.ok(
+      Math.abs(destination.x - moving.level.player.x) < 50,
+      `${inputMethod} sideways: target was not primarily perpendicular`,
+    );
+  }
+
+  const beforeBraking = state.level.player;
+  await step(page, 1000 / 60);
+  state = await readState(page);
+  const firstStep = Math.hypot(
+    state.level.player.x - beforeBraking.x,
+    state.level.player.y - beforeBraking.y,
+  );
+  assert.ok(
+    firstStep <= 4.2,
+    `${inputMethod} ${direction}: one 16.67 ms retarget step moved ${firstStep.toFixed(2)} px; expected at most 4.2 px`,
+  );
+  assert.ok(state.level.moveTarget, `${inputMethod} ${direction}: retarget cleared before braking/turning`);
+
+  const trajectory = await page.evaluate(({ frameCount, destination }) => {
+    let maximumFrameDistance = 0;
+    for (let index = 0; index < frameCount; index += 1) {
+      const before = JSON.parse(window.render_game_to_text()).level.player;
+      window.advanceTime(1000 / 60);
+      const after = JSON.parse(window.render_game_to_text()).level.player;
+      maximumFrameDistance = Math.max(
+        maximumFrameDistance,
+        Math.hypot(after.x - before.x, after.y - before.y),
+      );
+      window.__testSubject01.clearEnemies();
+      window.__testSubject01.setSpawnElapsedMs(0);
+    }
+    const finalState = JSON.parse(window.render_game_to_text()).level;
+    return {
+      maximumFrameDistance,
+      player: finalState.player,
+      destination,
+      moveTarget: finalState.moveTarget,
+      distanceFromDestination: Math.hypot(
+        finalState.player.x - destination.x,
+        finalState.player.y - destination.y,
+      ),
+    };
+  }, { frameCount: 180, destination });
+  assert.ok(
+    trajectory.maximumFrameDistance <= 9.2,
+    `${inputMethod} ${direction}: trajectory contained a ${trajectory.maximumFrameDistance.toFixed(2)} px frame jump`,
+  );
+  assert.equal(trajectory.moveTarget, null, `${inputMethod} ${direction}: destination did not complete`);
+  assert.ok(
+    trajectory.distanceFromDestination <= 1.5,
+    `${inputMethod} ${direction}: player did not stop at the destination; state ${JSON.stringify(trajectory)}`,
+  );
+  return { inputMethod, direction, firstStep, maximumFrameDistance: trajectory.maximumFrameDistance };
+}
+
+function clampValue(value, minimum, maximum) {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
 async function runDesktop(browser) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
@@ -110,6 +227,11 @@ async function runDesktop(browser) {
   await startLevel(page);
   let state = await assertCentered(page, "Desktop initial camera");
   await page.evaluate(() => window.__testSubject01.clearEnemies());
+  const retargetResults = [
+    await runDestinationRetarget(page, "mouse", "reverse", { x: -180, y: 0 }),
+    await runDestinationRetarget(page, "mouse", "sideways", { x: 0, y: 150 }),
+  ];
+  await page.screenshot({ path: path.join(outputDirectory, "desktop-retarget-arrival.png"), fullPage: true });
 
   state = await readState(page);
   const viewport = state.level.worldMap.viewportArena;
@@ -206,7 +328,7 @@ async function runDesktop(browser) {
   damage = await assertDamageClip(page, "Desktop resize with live labels");
   await page.screenshot({ path: path.join(outputDirectory, "damage-number-viewport-resized.png"), fullPage: true });
   await page.close();
-  return { fixedCursor, cameraScrollDelta: afterScroll.level.worldMap.cameraScroll.x - beforeScroll.level.worldMap.cameraScroll.x, mouseAimDirection: currentAim, firedAim, desktopClip: damage.clip };
+  return { retargetResults, fixedCursor, cameraScrollDelta: afterScroll.level.worldMap.cameraScroll.x - beforeScroll.level.worldMap.cameraScroll.x, mouseAimDirection: currentAim, firedAim, desktopClip: damage.clip };
 }
 
 async function runPhone(browser) {
@@ -215,7 +337,13 @@ async function runPhone(browser) {
   page.on("console", (message) => { if (message.type() === "error") errors.push(`phone: ${message.text()}`); });
   page.on("pageerror", (error) => errors.push(`phone: ${error.message}`));
   await startLevel(page);
-  const state = await assertCentered(page, "Phone initial camera");
+  let state = await assertCentered(page, "Phone initial camera");
+  const retargetResults = [
+    await runDestinationRetarget(page, "touch", "reverse", { x: -140, y: 0 }),
+    await runDestinationRetarget(page, "touch", "sideways", { x: 0, y: 120 }),
+  ];
+  await page.screenshot({ path: path.join(outputDirectory, "phone-retarget-arrival.png"), fullPage: true });
+  state = await readState(page);
   const arena = state.level.worldMap.viewportArena;
   const scroll = state.level.worldMap.cameraScroll;
   await page.evaluate(({ arena, scroll }) => {
@@ -233,7 +361,7 @@ async function runPhone(browser) {
   damage = await assertDamageClip(page, "Phone fullscreen with live labels");
   await page.screenshot({ path: path.join(outputDirectory, "damage-number-viewport-phone-fullscreen.png"), fullPage: true });
   await context.close();
-  return { viewportCenter: { x: arena.x + arena.width / 2, y: arena.y + arena.height / 2 }, phoneFullscreenClip: damage.clip };
+  return { retargetResults, viewportCenter: { x: arena.x + arena.width / 2, y: arena.y + arena.height / 2 }, phoneFullscreenClip: damage.clip };
 }
 
 await mkdir(outputDirectory, { recursive: true });
