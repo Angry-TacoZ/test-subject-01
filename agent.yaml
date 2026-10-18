@@ -1,0 +1,9 @@
+spec_version: "0.1.0"
+name: test-subject-01
+version: 0.1.0
+description: Engineering agent for James's Test Subject 01 repository.
+skills:
+  - api-integration-security
+  - interaction-usability
+  - security-relevant-change
+  - visual-diagnosis
